@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PUFShield &mdash; Secure Boot Console</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ======= Sidebar ======= -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+          <path d="M16 3 27 8v7c0 7.4-4.8 12.2-11 14C9.8 27.2 5 22.4 5 15V8z" fill="none" stroke="#3ddad7" stroke-width="2"/>
+          <path d="M12 16l3 3 5-6" fill="none" stroke="#2fe6a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <div class="brand-name">PUFShield</div>
+          <div class="brand-sub">Secure Boot Console</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="nav-item active" data-view="dashboard" href="#dashboard">
+          <svg viewBox="0 0 20 20"><path d="M2 11h7V2H2zm9-4h7V2h-7zM2 18h7v-5H2zm9 0h7v-9h-7z"/></svg>
+          <span>Dashboard</span>
+        </a>
+        <a class="nav-item" data-view="devices" href="#devices">
+          <svg viewBox="0 0 20 20"><path d="M15 2H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1zm-5 15a1 1 0 1 1 0-2 1 1 0 0 1 0 2zM14 14H6V4h8z"/></svg>
+          <span>Devices</span>
+        </a>
+        <a class="nav-item" data-view="puf" href="#puf">
+          <svg viewBox="0 0 20 20"><path d="M3 3h14v14H3zm3 3v2h2V6zm4 0v2h2V6zm4 0v2h2V6zm0 4v2h2v-2zm0 4v2h2v-2zm-4 0v2h2v-2zm-4 0v2h2v-2zm0-4v2h2v-2zm4 0v2h2v-2z"/></svg>
+          <span>SRAM PUF Analysis</span>
+        </a>
+        <a class="nav-item" data-view="pki" href="#pki">
+          <svg viewBox="0 0 20 20"><path d="M10 1 3 4v5c0 4.4 2.8 7.3 7 9 4.2-1.7 7-4.6 7-9V4zm0 5.5c1 0 1.8.8 1.8 1.8 0 .7-.4 1.3-1 1.6v2.3h-1.6v-2.3c-.6-.3-1-.9-1-1.6 0-1 .8-1.8 1.8-1.8z"/></svg>
+          <span>PKI / Certificates</span>
+        </a>
+        <a class="nav-item" data-view="firmware" href="#firmware">
+          <svg viewBox="0 0 20 20"><path d="M7 1 4 4l3 3 1.4-1.4L6.8 4 8.4 2.4zm6 0L13.6 1 12 2.6 13.2 4l-1.6 1.6L13 7l3-3zm-9 8v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9zM6 15h8v2H6z"/></svg>
+          <span>Firmware</span>
+        </a>
+        <a class="nav-item" data-view="boot" href="#boot">
+          <svg viewBox="0 0 20 20"><path d="M10 1a6 6 0 0 0-6 6c0 5 3 7 4 9h4c1-2 4-4 4-9a6 6 0 0 0-6-6zm-2 6a2 2 0 1 1 4 0 2 2 0 0 1-4 0zm2 8c-1.2 0-2-.8-2-2h4c0 1.2-.8 2-2 2z"/></svg>
+          <span>Secure Boot</span>
+        </a>
+        <a class="nav-item" data-view="attacks" href="#attacks">
+          <svg viewBox="0 0 20 20"><path d="M10 1 12 7h6l-5 4 2 6-5-3.5L5 17l2-6-5-4h6z"/></svg>
+          <span>Attack Center</span>
+        </a>
+        <a class="nav-item" data-view="logs" href="#logs">
+          <svg viewBox="0 0 20 20"><path d="M3 4h14v2H3zm0 5h14v2H3zm0 5h9v2H3z"/></svg>
+          <span>Security Logs</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-line">
+          <span class="dot" id="backend-dot"></span>
+          <span id="backend-status">checking&hellip;</span>
+        </div>
+        <button class="btn btn-ghost btn-block" id="refresh-all">Refresh all</button>
+      </div>
+    </aside>
+
+    <div class="backdrop" id="backdrop"></div>
+
+    <!-- ======= Main ======= -->
+    <div class="main">
+      <header class="topbar">
+        <button class="hamburger" id="hamburger" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+        <h1 id="page-title">Dashboard</h1>
+        <div class="topbar-right">
+          <span class="clock" id="clock"></span>
+        </div>
+      </header>
+
+      <main class="content">
+
+        <!-- ============ DASHBOARD ============ -->
+        <section class="view active" id="view-dashboard">
+          <div class="grid grid-cards" id="dash-stats"></div>
+
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Live Secure Boot pipeline</h2></div>
+              <div class="pipeline-controls">
+                <input id="pipe-device" type="text" value="dev-0001" required title="Device ID" aria-label="Device ID" />
+                <input id="pipe-version" type="text" placeholder="version (optional)" title="Firmware version" aria-label="Firmware version" />
+                <button class="btn btn-primary" id="pipe-run">Run boot</button>
+              </div>
+              <div class="pipeline" id="boot-pipeline"></div>
+              <div class="pipeline-status" id="pipe-message">Idle &mdash; press <b>Run boot</b> to execute a real boot through the verification pipeline.</div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h2>Recent security events</h2>
+                <a class="link" data-nav="logs" href="#logs">View all</a>
+              </div>
+              <div id="dash-events" class="timeline"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ DEVICES ============ -->
+        <section class="view" id="view-devices">
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Provision device</h2></div>
+              <form id="provision-form" class="form">
+                <label>Device ID<input id="device-id" type="text" value="dev-0001" required maxlength="64" /></label>
+                <label>PUF bit size
+                  <select id="bit-size">
+                    <option value="256" selected>256</option>
+                    <option value="512">512</option>
+                    <option value="1024">1024</option>
+                    <option value="2048">2048</option>
+                  </select>
+                </label>
+                <button class="btn btn-primary" type="submit">Provision</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>Device detail</h2></div>
+              <div id="device-detail" class="empty">Select a device to inspect its PUF enrollment, certificate and anti-rollback policy.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Registered devices <span class="badge badge-info" id="device-count"></span></h2>
+              <button class="btn btn-ghost" id="refresh-devices">Refresh</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table" id="devices-table">
+                <thead><tr>
+                  <th>Device</th><th>PUF size</th><th>Stable / Unstable</th>
+                  <th>Reliability</th><th>Min version</th><th>Registered</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ PUF ============ -->
+        <section class="view" id="view-puf">
+          <div class="grid grid-cards" id="puf-stats"></div>
+
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head">
+                <h2>PUF response visualization</h2>
+                <select id="puf-viz-device"></select>
+              </div>
+              <div class="puf-legend">
+                <span><i class="cell stable1"></i> stable = 1</span>
+                <span><i class="cell stable0"></i> stable = 0</span>
+                <span><i class="cell unstable"></i> unstable (metastable)</span>
+              </div>
+              <div id="puf-response-viz" class="puf-grid"></div>
+              <div class="pipeline-status" id="puf-viz-caption"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>Per-device metrics</h2></div>
+              <div id="puf-device-metrics" class="empty">Select a device to inspect its real PUF characteristics.</div>
+            </div>
+          </div>
+
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Reliability per device</h2></div>
+              <div id="puf-reliability-chart"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Uniqueness per device</h2></div>
+              <div id="puf-uniqueness-chart"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>PUF enrollment test</h2></div>
+              <form id="puf-test-form" class="form">
+                <label>Device ID<input id="puf-test-device" type="text" value="dev-0001" required /></label>
+                <label>Captures<input id="puf-test-captures" type="number" value="10" min="1" max="200" /></label>
+                <button class="btn btn-primary" type="submit">Run PUF test</button>
+              </form>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Test result</h2></div>
+              <div id="puf-test-result" class="empty">Run a test to verify a device reproduces its enrolled credential.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ PKI ============ -->
+        <section class="view" id="view-pki">
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Trust anchor</h2></div>
+              <div id="manufacturer-key"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Certificate detail</h2></div>
+              <div id="cert-detail" class="empty">Select a device certificate to inspect its chain status and PEM.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Device certificates</h2>
+              <button class="btn btn-ghost" id="refresh-certs">Refresh</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table" id="certs-table">
+                <thead><tr>
+                  <th>Device</th><th>Subject</th><th>Issuer</th><th>Serial</th>
+                  <th>Valid</th><th>Chain</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ FIRMWARE ============ -->
+        <section class="view" id="view-firmware">
+          <div class="grid grid-3">
+            <div class="card">
+              <div class="card-head"><h2>Create signed firmware</h2></div>
+              <form id="firmware-form" class="form">
+                <label>Version<input id="fw-version" type="text" value="1.0.0" required /></label>
+                <label>Device ID<input id="fw-device" type="text" value="dev-0001" required /></label>
+                <label>Payload (base64, optional)
+                  <textarea id="fw-payload" rows="3" placeholder="leave empty for the default bootloader payload"></textarea>
+                </label>
+                <button class="btn btn-primary" type="submit">Sign &amp; store</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>Sign without storing</h2></div>
+              <form id="sign-form" class="form">
+                <label>Version<input id="sign-version" type="text" value="1.0.0" required /></label>
+                <label>Device ID<input id="sign-device" type="text" value="dev-0001" required /></label>
+                <label class="check"><input type="checkbox" id="sign-store" /> Store in registry after signing</label>
+                <button class="btn btn-secondary" type="submit">Sign</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>Verify firmware</h2></div>
+              <form id="verify-form" class="form">
+                <label>Device ID<input id="verify-device" type="text" value="dev-0001" required /></label>
+                <label>Firmware version<input id="verify-version" type="text" value="1.0.0" required /></label>
+                <button class="btn btn-secondary" type="submit">Verify</button>
+              </form>
+              <div id="verify-result" class="result-box" style="display:none"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Signed firmware registry</h2>
+              <button class="btn btn-ghost" id="refresh-firmware">Refresh</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table" id="firmware-table">
+                <thead><tr>
+                  <th>Version</th><th>Device</th><th>Payload SHA-256</th><th>Created</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ SECURE BOOT ============ -->
+        <section class="view" id="view-boot">
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Simulate secure boot</h2></div>
+              <form id="boot-form" class="form">
+                <label>Device ID<input id="boot-device" type="text" value="dev-0001" required /></label>
+                <label>Firmware version (optional, defaults to latest)
+                  <input id="boot-version" type="text" placeholder="e.g. 1.0.0" /></label>
+                <button class="btn btn-primary" type="submit">Run secure boot</button>
+              </form>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Boot result</h2></div>
+              <div id="boot-result" class="empty">Run a secure boot to see the full verification pipeline.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Boot audit log</h2>
+              <button class="btn btn-ghost" id="refresh-bootlogs">Refresh</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table" id="boot-logs-table">
+                <thead><tr>
+                  <th>Status</th><th>Device</th><th>Image</th><th>Message</th><th>Time</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ ATTACK CENTER ============ -->
+        <section class="view" id="view-attacks">
+          <div class="card">
+            <div class="card-head">
+              <h2>Select attack scenario <span class="muted">&mdash; real simulations through the boot pipeline</span></h2>
+              <span class="badge badge-accent" id="attack-selected-label">none selected</span>
+            </div>
+            <div class="attack-buttons" id="attack-buttons"></div>
+          </div>
+
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Attack report</h2></div>
+              <div id="attack-result" class="empty">Select an attack, set a target, and press <b>Run attack</b> to see the full report.</div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Attack parameters</h2></div>
+              <form id="attack-form" class="form">
+                <label>Target device
+                  <input id="attack-device" type="text" list="device-list" value="dev-0001" required />
+                  <datalist id="device-list"></datalist>
+                </label>
+                <label>Firmware version (required for rollback)
+                  <input id="attack-version" type="text" placeholder="e.g. 1.0.0" /></label>
+                <div class="muted note" id="attack-target-note"></div>
+                <button class="btn btn-danger" type="submit">Run attack</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Attack log</h2>
+              <button class="btn btn-ghost" id="refresh-attacklogs">Refresh</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table" id="attack-logs-table">
+                <thead><tr>
+                  <th>Attack</th><th>Target</th><th>Detection point</th><th>Result</th><th>Reason</th><th>Time</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ SECURITY LOGS ============ -->
+        <section class="view" id="view-logs">
+          <div class="card">
+            <div class="card-head">
+              <h2>Security event feed</h2>
+              <div class="filters">
+                <select id="log-event-type">
+                  <option value="">All event types</option>
+                  <option value="boot">Boot</option>
+                  <option value="attack">Attack</option>
+                  <option value="auth">Authentication</option>
+                </select>
+                <input id="log-device-id" type="text" placeholder="device id (filter)" />
+                <button class="btn btn-ghost" id="log-refresh">Apply</button>
+              </div>
+            </div>
+            <div id="security-timeline" class="timeline"></div>
+          </div>
+
+          <div class="card">
+            <div class="tabs">
+              <button class="tab active" data-tab="boot">Boot log</button>
+              <button class="tab" data-tab="auth">Authentication log</button>
+              <button class="tab" data-tab="attack">Attack log</button>
+            </div>
+            <div class="table-wrap">
+              <table class="table" id="logs-table-boot">
+                <thead><tr><th>Status</th><th>Device</th><th>Image</th><th>Message</th><th>Time</th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <table class="table" id="logs-table-auth" style="display:none">
+                <thead><tr><th>Result</th><th>Device</th><th>Reason</th><th>Time</th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <table class="table" id="logs-table-attack" style="display:none">
+                <thead><tr><th>Attack</th><th>Target</th><th>Detection point</th><th>Result</th><th>Time</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
