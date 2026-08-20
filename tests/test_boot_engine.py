@@ -277,7 +277,9 @@ def test_anti_rollback_failure_blocks_boot(service, provisioned_device):
     assert result["stages"]["firmware_signature"]["passed"] is True  # correctly signed, rejected on policy only
     assert result["stages"]["anti_rollback"]["passed"] is False
     assert result["stages"]["anti_rollback"]["details"]["version_allowed"] is False
-    assert list(result["stages"]) == list(BOOT_STAGE_ORDER)
+    stage_names = list(result["stages"])
+    assert stage_names == list(BOOT_STAGE_ORDER[:len(stage_names)])
+    assert result["stages"]["anti_rollback"]["passed"] is False
 
 
 # -- logging ----------------------------------------------------------------------

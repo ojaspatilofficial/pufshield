@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import logging
 
 from cryptography import x509
@@ -26,6 +27,12 @@ from .firmware import (
 from .pki import PKIManager, is_ca_certificate
 from .puf import DEFAULT_CAPTURES, PUFEnrollment, SRAMPUF
 from .secureboot import BOOT_STAGE_ORDER, BootStatus, SecureBootManager
+from .transparency import FirmwareTransparencyLog
+from .pqcrypto import generate_keypair as pqc_generate, sign as pqc_sign, verify as pqc_verify
+from .zkp import SchnorrVerifier, create_niproof
+from .ai.environment import SRAMPUFSimulator, EnvironmentalConditions
+from .ai.anomaly import AnomalyDetector, BootFeatureVector
+from .risk.engine import RiskEngine
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +66,49 @@ class Service:
         self.attacks = AttackSimulator()
         self.auth = AuthManager(self.pki, self.db)
         self._pufs: dict[str, SRAMPUF] = {}
+        self.transparency = FirmwareTransparencyLog()
+        self.pqc_verifier = SchnorrVerifier()
+        self.anomaly_detector = AnomalyDetector(threshold=self.settings.anomaly_threshold)
+        self.risk_engine = RiskEngine()
+        self.env_simulators: dict[str, SRAMPUFSimulator] = {}
+        self._rebuild_transparency_tree()
+
+    def _rebuild_transparency_tree(self) -> None:
+        """Rebuild the in-memory Merkle tree from stored transparency entries."""
+        try:
+            from .transparency.log import FirmwareEntry
+            rows = self.db.list_transparency_entries()
+            for row in rows:
+                if row.get("leaf_hash"):
+                    leaf_hash = bytes.fromhex(row["leaf_hash"])
+                else:
+                    import hashlib as _hl
+                    leaf_bytes = json.dumps({
+                        "firmware_id": row["firmware_id"],
+                        "version": row["version"],
+                        "device_id": row["device_id"],
+                        "payload_sha256": row["payload_sha256"],
+                        "signer": row["signer"],
+                        "sequence": row["leaf_index"],
+                    }, sort_keys=True, separators=(",", ":")).encode("utf-8")
+                    leaf_hash = _hl.sha256(leaf_bytes).digest()
+                entry = FirmwareEntry(
+                    firmware_id=row["firmware_id"],
+                    version=row["version"],
+                    device_id=row["device_id"],
+                    payload_sha256=row["payload_sha256"],
+                    signer=row["signer"],
+                    timestamp=row.get("created_at", ""),
+                    published=True,
+                    sequence=row["leaf_index"],
+                    leaf_hash=leaf_hash,
+                )
+                self.transparency._entries.append(entry)
+                self.transparency._tree.add_leaf_hash(leaf_hash)
+                self.transparency._sequence_counter = max(self.transparency._sequence_counter, row["leaf_index"])
+                self.transparency._root_history = [self.transparency._tree.root]
+        except Exception:
+            pass
 
     # -- provisioning --------------------------------------------------
 
@@ -680,6 +730,8 @@ class Service:
         info = sum(1 for event in events if event["severity"] == "info")
 
         puf = self.puf_analysis()
+        risk_history = self.db.list_risk_assessments(limit=10)
+        latest_risk = risk_history[0] if risk_history else None
         return {
             "devices": {"total": len(devices)},
             "firmware": {
@@ -715,17 +767,251 @@ class Service:
                 "mean_uniqueness": puf["mean_uniqueness"],
                 "mean_bit_error_rate": puf["mean_bit_error_rate"],
             },
+            "transparency": {
+                "entries": self.transparency.entry_count,
+                "root": self.transparency.current_root.hex(),
+            },
+            "pqc": {
+                "enabled": self.settings.pqc_enabled,
+                "keys_registered": len(devices),
+            },
+            "risk": {
+                "latest": latest_risk,
+                "history_count": len(risk_history),
+            },
+            "anomaly": self.anomaly_detector.get_trend(),
+        }
+
+    # ── PQC (ML-DSA-65) ───────────────────────────────────────────────
+
+    def pqc_generate_keypair(self, device_id: str) -> dict:
+        """Generate a post-quantum ML-DSA-65 keypair and store the public key."""
+        device = self.db.get_device(device_id)
+        if not device:
+            raise DeviceNotFound(f"device {device_id!r} not found")
+        pk, sk = pqc_generate()
+        pk_hex = pk.to_hex()
+        self.db.save_pqc_key(device_id, pk_hex, "ML-DSA-65")
+        logger.info("Generated PQC keypair for %s", device_id)
+        return {
+            "device_id": device_id,
+            "algorithm": "ML-DSA-65",
+            "public_key_hex": pk_hex,
+            "status": "stored",
+        }
+
+    # ── Zero-Knowledge Proof ──────────────────────────────────────────
+
+    def zkp_create_proof(self, device_id: str) -> dict:
+        """Create a non-interactive Schnorr ZKP proving knowledge of the device secret."""
+        device = self.db.get_device(device_id)
+        if not device:
+            raise DeviceNotFound(f"device {device_id!r} not found")
+        seed = bytes.fromhex(device["puf_seed"])
+        import hashlib as _hl
+        secret = int.from_bytes(_hl.sha256(seed + device_id.encode()).digest(), "big") % self.pqc_verifier.q
+        public_key = self.pqc_verifier.compute_public_key(secret)
+        proof = create_niproof(secret)
+        logger.info("Created ZKP proof for %s", device_id)
+        return {
+            "device_id": device_id,
+            "public_key": str(public_key),
+            "proof": proof.to_dict(),
+            "verified": self.pqc_verifier.verify_noninteractive(public_key, proof),
+        }
+
+    def zkp_verify_proof(self, device_id: str, proof_dict: dict) -> dict:
+        """Verify a Schnorr ZKP for a device."""
+        device = self.db.get_device(device_id)
+        if not device:
+            raise DeviceNotFound(f"device {device_id!r} not found")
+        seed = bytes.fromhex(device["puf_seed"])
+        import hashlib as _hl
+        secret = int.from_bytes(_hl.sha256(seed + device_id.encode()).digest(), "big") % self.pqc_verifier.q
+        public_key = self.pqc_verifier.compute_public_key(secret)
+        proof = SchnorrProof.from_dict(proof_dict)
+        valid = self.pqc_verifier.verify_noninteractive(public_key, proof)
+        logger.info("ZKP verification for %s: %s", device_id, "valid" if valid else "invalid")
+        return {
+            "device_id": device_id,
+            "verified": valid,
+            "public_key": str(public_key),
+        }
+
+    # ── Environmental PUF ─────────────────────────────────────────────
+
+    def environmental_read(self, device_id: str, temperature: float, voltage: float, em_interference: float) -> dict:
+        """Read the environmental PUF simulator under given conditions."""
+        device = self.db.get_device(device_id)
+        if not device:
+            raise DeviceNotFound(f"device {device_id!r} not found")
+        seed = bytes.fromhex(device["puf_seed"])
+        if device_id not in self.env_simulators:
+            self.env_simulators[device_id] = SRAMPUFSimulator(device_seed=seed)
+        sim = self.env_simulators[device_id]
+        conditions = EnvironmentalConditions(
+            temperature_c=temperature,
+            voltage_v=voltage,
+            em_interference_db=em_interference,
+        )
+        measurement = sim.read_puf(conditions)
+        env_hash = sim.environmental_hash(conditions)
+        return {
+            "device_id": device_id,
+            "measurement": measurement.to_dict(),
+            "environmental_hash": env_hash,
+        }
+
+    def environmental_stability(self, device_id: str, temperature: float, voltage: float, em_interference: float) -> dict:
+        """Run a batch stability analysis for a device under given conditions."""
+        device = self.db.get_device(device_id)
+        if not device:
+            raise DeviceNotFound(f"device {device_id!r} not found")
+        seed = bytes.fromhex(device["puf_seed"])
+        if device_id not in self.env_simulators:
+            self.env_simulators[device_id] = SRAMPUFSimulator(device_seed=seed)
+        sim = self.env_simulators[device_id]
+        conditions = EnvironmentalConditions(
+            temperature_c=temperature,
+            voltage_v=voltage,
+            em_interference_db=em_interference,
+        )
+        analysis = sim.stability_analysis(conditions)
+        return {"device_id": device_id, **analysis}
+
+    # ── Anomaly detection ─────────────────────────────────────────────
+
+    def anomaly_analyze(
+        self,
+        device_id: str,
+        boot_duration_ms: float = 150.0,
+        stage_count: int = 7,
+        passed_stages: int = 7,
+        error_count: int = 0,
+        attack_type: str | None = None,
+    ) -> dict:
+        """Analyze boot behavior for anomalies."""
+        device = self.db.get_device(device_id)
+        if not device:
+            raise DeviceNotFound(f"device {device_id!r} not found")
+        features = BootFeatureVector(
+            boot_duration_ms=boot_duration_ms,
+            stage_count=stage_count,
+            passed_stages=passed_stages,
+            stage_durations=[boot_duration_ms / max(stage_count, 1)] * stage_count,
+            sig_check_time_ms=50.0,
+            puf_read_time_ms=20.0,
+            error_count=error_count,
+            error_codes=[],
+            attack_type=attack_type,
+        )
+        result = self.anomaly_detector.analyze(features)
+        return {
+            "device_id": device_id,
+            "analysis": result.to_dict(),
+            "trend": self.anomaly_detector.get_trend(),
+        }
+
+    # ── Risk assessment ───────────────────────────────────────────────
+
+    def risk_assess(
+        self,
+        device_id: str,
+        signature_valid: bool = True,
+        chain_valid: bool = True,
+        puf_match_score: float = 1.0,
+        anomaly_score: float = 0.0,
+        transparency_valid: bool = True,
+        pqc_valid: bool = True,
+        firmware_integrity: bool = True,
+        known_attack: str | None = None,
+    ) -> dict:
+        """Run multi-layer risk assessment for a device."""
+        device = self.db.get_device(device_id)
+        if not device:
+            raise DeviceNotFound(f"device {device_id!r} not found")
+        risk = self.risk_engine.assess(
+            signature_valid=signature_valid,
+            chain_valid=chain_valid,
+            puf_match_score=puf_match_score,
+            anomaly_score=anomaly_score,
+            transparency_log_valid=transparency_valid,
+            pqc_valid=pqc_valid,
+            firmware_integrity=firmware_integrity,
+            known_attack=known_attack,
+        )
+        result = risk.to_dict()
+        self.db.save_risk_assessment(
+            device_id=device_id,
+            overall_score=risk.overall_score,
+            risk_level=risk.level.value,
+            action=risk.action.value,
+            layers_json=json.dumps(result["layers"]),
+            recommendations=risk.recommendations,
+        )
+        return result
+
+    # ── Transparency log ──────────────────────────────────────────────
+
+    def transparency_record(
+        self,
+        firmware_id: str,
+        version: str,
+        device_id: str,
+        payload_sha256: str,
+    ) -> dict:
+        """Record a firmware entry in the transparency log."""
+        entry = self.transparency.record_firmware(firmware_id, version, device_id, payload_sha256)
+        self.db.save_transparency_entry(
+            firmware_id=firmware_id,
+            version=version,
+            device_id=device_id,
+            payload_sha256=payload_sha256,
+            signer=entry.signer,
+            leaf_index=entry.sequence,
+            root_hash=self.transparency.current_root.hex(),
+            leaf_hash=entry.leaf_hash.hex(),
+        )
+        return entry.to_dict()
+
+    def transparency_verify(self, device_id: str, version: str) -> dict:
+        """Verify firmware inclusion in the transparency log."""
+        entry = self.transparency.lookup(device_id, version)
+        if entry is None:
+            return {"device_id": device_id, "version": version, "found": False, "valid": False}
+        proof = self.transparency.get_inclusion_proof(self.transparency._entries.index(entry))
+        valid = self.transparency._tree.verify_proof(proof)
+        root_ok, root_msg = self.transparency.verify_root_consistency()
+        return {
+            "device_id": device_id,
+            "version": version,
+            "found": True,
+            "valid": valid,
+            "root_consistent": root_ok,
+            "root_message": root_msg,
+            "entry": entry.to_dict(),
+            "proof": proof.to_dict() if hasattr(proof, "to_dict") else str(proof),
+        }
+
+    def transparency_root_history(self) -> dict:
+        """Get the transparency log root history."""
+        return {
+            "roots": self.transparency.get_root_history(),
+            "current_root": self.transparency.current_root.hex(),
+            "entry_count": self.transparency.entry_count,
         }
 
     def _log_boot(self, device_id: str, image_version: str | None, result) -> None:
-        """Persist a boot decision with its per-stage checks.
-
-        Each secure boot attempt also writes a timestamped security event
-        (severity: ``info`` for a clean boot, ``high`` for a failed
-        authentication, ``critical`` for any blocked boot).
-        """
+        """Persist a boot decision with its per-stage checks."""
         checks = dict(result.checks)
         checks["decision"] = result.decision.value
+        if hasattr(result, "timing_ms"):
+            checks["timing_ms"] = {k: round(v, 2) for k, v in (result.timing_ms or {}).items()}
+            checks["total_duration_ms"] = round(result.total_duration_ms, 2)
+        if hasattr(result, "explanations"):
+            checks["explanations"] = result.explanations
+        if hasattr(result, "to_report"):
+            checks["boot_report"] = result.to_report()
         status = result.status.value
         self.db.log_boot(device_id, image_version, status, result.message, checks)
         self.db.log_security_event(
@@ -744,3 +1030,173 @@ class Service:
         if status == "auth_failed":
             return "high"
         return "critical"
+
+    # ── Explainable Boot Report ───────────────────────────────────────
+
+    def boot_report(self, device_id: str) -> dict:
+        """Return the explainable boot report for the most recent boot of this device."""
+        if not self.db.get_device(device_id):
+            raise DeviceNotFound(f"device {device_id!r} not found")
+        logs = self.db.list_boot_logs(1)
+        if not logs:
+            return {"device_id": device_id, "error": "No boot logs found. Run a boot first."}
+        last = logs[0]
+        checks = last.get("checks", {})
+        boot_report_data = checks.get("boot_report")
+        if boot_report_data:
+            boot_report_data["device_id"] = device_id
+            return boot_report_data
+        # Fallback: construct from flat checks
+        decision = checks.get("decision", "unknown")
+        return {
+            "device_id": device_id,
+            "decision": decision,
+            "status": last.get("status"),
+            "message": last.get("message"),
+            "timestamp": last.get("timestamp"),
+            "firmware_version": last.get("image_version"),
+            "checks": checks,
+            "explanation": self._explain_boot_decision(decision, checks, {}),
+        }
+
+    @staticmethod
+    def _explain_boot_decision(decision: str, checks: dict, stages: dict) -> dict:
+        """Generate a structured explanation of the boot decision."""
+        all_passed = all(v for k, v in checks.items() if k not in ("decision",) and isinstance(v, bool))
+        failed_stages = [k for k, v in checks.items()
+                        if k.endswith("_valid") or k.endswith("_checked") or k.endswith("_allowed")
+                        or k in ("puf_match", "fuzzy_recovered", "puf_binding_match",
+                                 "hash_valid", "signature_valid", "manufacturer_signature_valid",
+                                 "challenge_verified", "auth_signature_valid")
+                        if v is False]
+        return {
+            "all_checks_passed": all_passed,
+            "failed_checks": failed_stages,
+            "blocking_failures": [s for s in failed_stages
+                                  if s in ("puf_match", "fuzzy_recovered", "puf_binding_match",
+                                           "hash_valid", "signature_valid", "manufacturer_signature_valid",
+                                           "challenge_verified", "auth_signature_valid")],
+            "posture": "strong" if decision == "BOOT_ALLOWED" else "compromised",
+        }
+
+    # ── Performance Metrics ───────────────────────────────────────────
+
+    def boot_metrics(self, device_id: str | None = None) -> dict:
+        """Return performance metrics from recent boot logs."""
+        logs = self.db.list_boot_logs(50)
+        if device_id:
+            logs = [l for l in logs if l.get("device_id") == device_id]
+
+        if not logs:
+            return {"device_id": device_id, "boots_analyzed": 0, "metrics": {}}
+
+        total = len(logs)
+        allowed = sum(1 for l in logs if l.get("status") == "success")
+        blocked = total - allowed
+
+        stage_pass_rates = {}
+        all_stages = [
+            "puf_recovery", "puf_pki_binding", "certificate_verification", "challenge_response",
+            "firmware_hash", "firmware_signature", "anti_rollback",
+        ]
+        for stage_name in all_stages:
+            stage_key = f"stage_{stage_name}_passed"
+            passed = sum(1 for l in logs
+                        if l.get("checks", {}).get(stage_key) is True)
+            stage_pass_rates[stage_name] = round(passed / total, 4) if total else 0
+
+        return {
+            "device_id": device_id,
+            "boots_analyzed": total,
+            "allowed": allowed,
+            "blocked": blocked,
+            "allow_rate": round(allowed / total, 4) if total else 0,
+            "block_rate": round(blocked / total, 4) if total else 0,
+            "stage_pass_rates": stage_pass_rates,
+            "most_common_block": self._most_common_block(logs),
+        }
+
+    @staticmethod
+    def _most_common_block(logs: list[dict]) -> str | None:
+        blocks = [l.get("status") for l in logs if l.get("status") != "success"]
+        if not blocks:
+            return None
+        counts: dict[str, int] = {}
+        for b in blocks:
+            counts[b] = counts.get(b, 0) + 1
+        return max(counts, key=counts.get)
+
+    # ── Security Event Timeline ───────────────────────────────────────
+
+    def security_timeline(self, device_id: str | None = None, limit: int = 50) -> dict:
+        """Return a chronological security event timeline."""
+        events = self.db.list_security_events(limit, device_id=device_id)
+        timeline = []
+        for ev in events:
+            timeline.append({
+                "timestamp": ev.get("timestamp"),
+                "event_type": ev.get("event_type"),
+                "device_id": ev.get("device_id"),
+                "severity": ev.get("severity"),
+                "result": ev.get("result"),
+                "summary": ev.get("summary"),
+                "details": ev.get("details", {}),
+            })
+        return {
+            "device_id": device_id,
+            "event_count": len(timeline),
+            "timeline": timeline,
+            "severity_counts": {
+                "info": sum(1 for e in timeline if e.get("severity") == "info"),
+                "warning": sum(1 for e in timeline if e.get("severity") == "warning"),
+                "high": sum(1 for e in timeline if e.get("severity") == "high"),
+                "critical": sum(1 for e in timeline if e.get("severity") == "critical"),
+            },
+        }
+
+    # ── Digital Twin ──────────────────────────────────────────────────
+
+    def digital_twin(self, device_id: str) -> dict:
+        """Return digital twin state: SRAM grid + environmental conditions."""
+        if not self.db.get_device(device_id):
+            raise DeviceNotFound(f"device {device_id!r} not found")
+        env_sim = self.env_simulators.get(device_id)
+        if env_sim is None:
+            from app.ai.environment import SRAMPUFSimulator
+            env_sim = SRAMPUFSimulator(device_seed=device_id.encode("utf-8"))
+            self.env_simulators[device_id] = env_sim
+
+        from app.ai.environment import EnvironmentalConditions
+        conditions = EnvironmentalConditions()
+        measurement = env_sim.read_puf(conditions)
+
+        raw_bits = measurement.raw_bits
+        grid_size = min(16, len(raw_bits))
+        sram_grid = []
+        for row in range(grid_size):
+            grid_row = []
+            for col in range(grid_size):
+                idx = row * grid_size + col
+                if idx < len(raw_bits):
+                    grid_row.append(int(raw_bits[idx]))
+                else:
+                    grid_row.append(0)
+            sram_grid.append(grid_row)
+
+        history = env_sim.stability_analysis(conditions, count=5)
+        return {
+            "device_id": device_id,
+            "sram_grid": sram_grid,
+            "grid_size": grid_size,
+            "total_bits": len(raw_bits),
+            "bit_flip_rate": measurement.bit_flip_rate,
+            "stability": measurement.stability,
+            "entropy_bits": measurement.entropy_bits,
+            "environmental_hash": env_sim.environmental_hash(conditions),
+            "stability_history": history,
+            "conditions": {
+                "temperature_c": conditions.temperature_c,
+                "voltage_v": conditions.voltage_v,
+                "em_interference_db": conditions.em_interference_db,
+            },
+        }

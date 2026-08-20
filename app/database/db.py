@@ -147,6 +147,38 @@ CREATE TABLE IF NOT EXISTS attack_logs (
     reason           TEXT NOT NULL,
     created_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS transparency_entries (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    firmware_id      TEXT NOT NULL,
+    version          TEXT NOT NULL,
+    device_id        TEXT NOT NULL,
+    payload_sha256   TEXT NOT NULL,
+    signer           TEXT NOT NULL,
+    leaf_index       INTEGER NOT NULL,
+    leaf_hash        TEXT,
+    root_hash        TEXT NOT NULL,
+    created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS pqc_keys (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id        TEXT NOT NULL UNIQUE,
+    public_key_hex   TEXT NOT NULL,
+    key_algorithm    TEXT NOT NULL DEFAULT 'ML-DSA-65',
+    created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS risk_assessments (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id        TEXT NOT NULL,
+    overall_score    REAL NOT NULL,
+    risk_level       TEXT NOT NULL,
+    action           TEXT NOT NULL,
+    layers_json      TEXT NOT NULL,
+    recommendations  TEXT,
+    created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
@@ -687,3 +719,64 @@ class Database:
     def count_attack_logs_by_result(self) -> dict[str, int]:
         rows = self.conn.execute("SELECT result, COUNT(*) AS n FROM attack_logs GROUP BY result").fetchall()
         return {row["result"]: int(row["n"]) for row in rows}
+
+    # -- transparency log entries ---------------------------------------
+
+    def save_transparency_entry(
+        self, firmware_id: str, version: str, device_id: str,
+        payload_sha256: str, signer: str, leaf_index: int, root_hash: str,
+        leaf_hash: str = "",
+    ) -> None:
+        self.conn.execute(
+            "INSERT INTO transparency_entries (firmware_id, version, device_id, payload_sha256, signer, leaf_index, leaf_hash, root_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (firmware_id, version, device_id, payload_sha256, signer, leaf_index, leaf_hash, root_hash),
+        )
+        self.conn.commit()
+
+    def list_transparency_entries(self, device_id: str | None = None) -> list[dict[str, Any]]:
+        if device_id:
+            rows = self.conn.execute("SELECT * FROM transparency_entries WHERE device_id = ? ORDER BY id", (device_id,)).fetchall()
+        else:
+            rows = self.conn.execute("SELECT * FROM transparency_entries ORDER BY id").fetchall()
+        return [dict(r) for r in rows]
+
+    # -- PQC keys -------------------------------------------------------
+
+    def save_pqc_key(self, device_id: str, public_key_hex: str, algorithm: str = "ML-DSA-65") -> None:
+        self.conn.execute(
+            "INSERT INTO pqc_keys (device_id, public_key_hex, key_algorithm) VALUES (?, ?, ?) ON CONFLICT(device_id) DO UPDATE SET public_key_hex = excluded.public_key_hex, key_algorithm = excluded.key_algorithm",
+            (device_id, public_key_hex, algorithm),
+        )
+        self.conn.commit()
+
+    def get_pqc_key(self, device_id: str) -> dict[str, Any] | None:
+        row = self.conn.execute("SELECT * FROM pqc_keys WHERE device_id = ?", (device_id,)).fetchone()
+        return dict(row) if row else None
+
+    # -- risk assessments ------------------------------------------------
+
+    def save_risk_assessment(self, device_id: str, overall_score: float, risk_level: str, action: str, layers_json: str, recommendations: list[str] | None = None) -> None:
+        self.conn.execute(
+            "INSERT INTO risk_assessments (device_id, overall_score, risk_level, action, layers_json, recommendations) VALUES (?, ?, ?, ?, ?, ?)",
+            (device_id, overall_score, risk_level, action, layers_json, json.dumps(recommendations) if recommendations else None),
+        )
+        self.conn.commit()
+
+    def list_risk_assessments(self, device_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+        query = "SELECT * FROM risk_assessments"
+        params: list[Any] = []
+        if device_id:
+            query += " WHERE device_id = ?"
+            params.append(device_id)
+        query += " ORDER BY id DESC LIMIT ?"
+        params.append(limit)
+        rows = self.conn.execute(query, params).fetchall()
+        result = []
+        for r in rows:
+            item = dict(r)
+            if item.get("recommendations"):
+                item["recommendations"] = json.loads(item["recommendations"])
+            if item.get("layers_json"):
+                item["layers_json"] = json.loads(item["layers_json"])
+            result.append(item)
+        return result

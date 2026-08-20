@@ -54,6 +54,30 @@
           <svg viewBox="0 0 20 20"><path d="M3 4h14v2H3zm0 5h14v2H3zm0 5h9v2H3z"/></svg>
           <span>Security Logs</span>
         </a>
+        <a class="nav-item" data-view="transparency" href="#transparency">
+          <svg viewBox="0 0 20 20"><path d="M3 3h14v14H3zM3 3l7 7m0 0l7-7m-7 7v7"/></svg>
+          <span>Transparency Log</span>
+        </a>
+        <a class="nav-item" data-view="pqc" href="#pqc">
+          <svg viewBox="0 0 20 20"><path d="M10 1 3 4v5c0 5 3 7.5 7 9 4-1.5 7-4 7-9V4z"/><path d="M7 10l2 2 4-4" fill="none" stroke-width="2"/></svg>
+          <span>Post-Quantum</span>
+        </a>
+        <a class="nav-item" data-view="environmental" href="#environmental">
+          <svg viewBox="0 0 20 20"><path d="M10 2v12M7 4v10M13 6v8M4 8v6M16 7v7M1 9v5M19 8v6"/></svg>
+          <span>Environment</span>
+        </a>
+        <a class="nav-item" data-view="risk" href="#risk">
+          <svg viewBox="0 0 20 20"><path d="M10 1l9 17H1zM10 6v6M10 14v1"/></svg>
+          <span>Risk Engine</span>
+        </a>
+        <a class="nav-item" data-view="digital-twin" href="#digital-twin">
+          <span class="nav-icon">&#x2B21;</span>
+          <span>Digital Twin</span>
+        </a>
+        <a class="nav-item" data-view="boot-report" href="#boot-report">
+          <span class="nav-icon">&#x1F4CB;</span>
+          <span>Boot Report</span>
+        </a>
       </nav>
 
       <div class="sidebar-footer">
@@ -75,6 +99,7 @@
         </button>
         <h1 id="page-title">Dashboard</h1>
         <div class="topbar-right">
+          <button class="btn btn-primary" id="demo-run" style="font-size:12px;padding:6px 12px">Run Demo</button>
           <span class="clock" id="clock"></span>
         </div>
       </header>
@@ -401,6 +426,146 @@
                 <thead><tr><th>Attack</th><th>Target</th><th>Detection point</th><th>Result</th><th>Time</th></tr></thead>
                 <tbody></tbody>
               </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ TRANSPARENCY LOG ============ -->
+        <section class="view" id="view-transparency">
+          <div class="grid grid-cards" id="tl-stats"></div>
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Verify firmware in transparency log</h2></div>
+              <form id="tl-verify-form" class="form">
+                <label>Device ID<input id="tl-verify-device" type="text" value="dev-001" required /></label>
+                <label>Version<input id="tl-verify-version" type="text" value="1.0.0" required /></label>
+                <button class="btn btn-primary" type="submit">Verify inclusion</button>
+              </form>
+              <div id="tl-verify-result" class="result-box" style="display:none"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Root history</h2></div>
+              <div id="tl-root-history" class="empty">No entries yet.</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Transparency log entries <span class="badge badge-info" id="tl-count"></span></h2></div>
+            <div class="table-wrap">
+              <table class="table" id="tl-table">
+                <thead><tr><th>Seq</th><th>Firmware ID</th><th>Version</th><th>Device</th><th>Payload SHA-256</th><th>Signer</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ POST-QUANTUM ============ -->
+        <section class="view" id="view-pqc">
+          <div class="grid grid-cards" id="pqc-stats"></div>
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Generate ML-DSA-65 keypair</h2></div>
+              <form id="pqc-gen-form" class="form">
+                <label>Device ID<input id="pqc-gen-device" type="text" value="dev-001" required /></label>
+                <button class="btn btn-primary" type="submit">Generate keypair</button>
+              </form>
+              <div id="pqc-gen-result" class="result-box" style="display:none"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>PQC key status</h2></div>
+              <div id="pqc-key-info" class="empty">Generate a keypair to view details.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ ENVIRONMENTAL ============ -->
+        <section class="view" id="view-environmental">
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Environmental PUF read</h2></div>
+              <form id="env-form" class="form">
+                <label>Device ID<input id="env-device" type="text" value="dev-001" required /></label>
+                <label>Temperature (°C)<input id="env-temp" type="number" value="25" min="-40" max="125" step="0.1" /></label>
+                <label>Voltage (V)<input id="env-voltage" type="number" value="3.3" min="1.0" max="5.0" step="0.01" /></label>
+                <label>EM interference (dB)<input id="env-em" type="number" value="0" min="0" max="100" step="0.1" /></label>
+                <button class="btn btn-primary" type="submit">Read PUF</button>
+              </form>
+              <div id="env-result" class="result-box" style="display:none"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Environment → PUF response</h2></div>
+              <div id="env-puf-viz" class="puf-grid" style="grid-template-columns:repeat(16,9px)">
+                <div class="empty">Read the PUF under different conditions to see the effect.</div>
+              </div>
+              <div class="puf-legend" style="margin-top:10px">
+                <span><i class="cell stable1"></i> stable = 1</span>
+                <span><i class="cell stable0"></i> stable = 0</span>
+                <span><i class="cell unstable"></i> flipped by environment</span>
+              </div>
+              <div class="pipeline-status" id="env-caption"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ RISK ENGINE ============ -->
+        <section class="view" id="view-risk">
+          <div class="grid grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Assess device risk</h2></div>
+              <form id="risk-form" class="form">
+                <label>Device ID<input id="risk-device" type="text" value="dev-001" required /></label>
+                <label class="check"><input type="checkbox" id="risk-sig" checked /> Signature valid</label>
+                <label class="check"><input type="checkbox" id="risk-chain" checked /> Chain valid</label>
+                <label>PUF match score<input id="risk-puf" type="number" value="1.0" min="0" max="1" step="0.01" /></label>
+                <label>Anomaly score<input id="risk-anom" type="number" value="0.0" min="0" max="1" step="0.01" /></label>
+                <label class="check"><input type="checkbox" id="risk-tl" checked /> Transparency valid</label>
+                <label class="check"><input type="checkbox" id="risk-pqc" checked /> PQC valid</label>
+                <label class="check"><input type="checkbox" id="risk-fw" checked /> Firmware integrity</label>
+                <label>Known attack (optional)<input id="risk-attack" type="text" placeholder="e.g. clone_device" /></label>
+                <button class="btn btn-primary" type="submit">Run risk assessment</button>
+              </form>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Risk result</h2></div>
+              <div id="risk-result" class="empty">Run a risk assessment to see the composite score.</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Risk history</h2><button class="btn btn-ghost" id="refresh-risk">Refresh</button></div>
+            <div class="table-wrap">
+              <table class="table" id="risk-table">
+                <thead><tr><th>Time</th><th>Device</th><th>Score</th><th>Level</th><th>Action</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ DIGITAL TWIN ============ -->
+        <section class="view" id="view-digital-twin">
+          <div class="card">
+            <div class="card-head"><h2>Digital Twin &mdash; SRAM PUF Grid</h2></div>
+            <div style="padding:16px">
+              <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+                <label>Device: <input type="text" id="twin-device" value="" class="input" style="width:140px" /></label>
+                <button class="btn" id="twin-load">Load</button>
+              </div>
+              <div id="twin-grid" style="font-family:monospace;font-size:11px;line-height:1.2;background:#0d1117;color:#58a6ff;padding:12px;border-radius:6px;max-height:300px;overflow:auto">&mdash;</div>
+              <div id="twin-stats" style="margin-top:12px;color:#8b949e;font-size:13px">&mdash;</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ BOOT REPORT ============ -->
+        <section class="view" id="view-boot-report">
+          <div class="card">
+            <div class="card-head"><h2>Explainable Boot Report</h2></div>
+            <div style="padding:16px">
+              <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+                <label>Device: <input type="text" id="report-device" value="" class="input" style="width:140px" /></label>
+                <button class="btn" id="report-load">Generate Report</button>
+              </div>
+              <div id="report-content" style="font-size:13px;color:#8b949e">&mdash;</div>
             </div>
           </div>
         </section>

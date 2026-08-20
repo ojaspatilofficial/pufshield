@@ -26,6 +26,12 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
+    anomaly_threshold: float = 0.5
+    pqc_enabled: bool = True
+    transparency_log_enabled: bool = True
+    risk_engine_enabled: bool = True
+    demo_mode: bool = False
+
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",

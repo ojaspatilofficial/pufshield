@@ -364,3 +364,167 @@ def list_security_events(
 @router.get("/dashboard/stats")
 def dashboard_stats(service: Service = Depends(get_service)) -> dict:
     return service.dashboard_stats()
+
+
+# ── PQC (ML-DSA-65) ──────────────────────────────────────────────────
+
+@router.post("/pqc/generate")
+def pqc_generate_keypair(device_id: str = Query(..., pattern=_DEVICE_ID_PATTERN), service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.pqc_generate_keypair(device_id)
+    except DeviceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+# ── Zero-Knowledge Proof ─────────────────────────────────────────────
+
+@router.post("/zkp/prove")
+def zkp_prove(device_id: str = Query(..., pattern=_DEVICE_ID_PATTERN), service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.zkp_create_proof(device_id)
+    except DeviceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+class ZKPVerifyRequest(BaseModel):
+    device_id: str = Field(**_DEVICE_ID_FIELD)
+    proof: dict = Field(...)
+
+
+@router.post("/zkp/verify")
+def zkp_verify(req: ZKPVerifyRequest, service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.zkp_verify_proof(req.device_id, req.proof)
+    except DeviceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+# ── Environmental PUF ────────────────────────────────────────────────
+
+class EnvReadRequest(BaseModel):
+    device_id: str = Field(**_DEVICE_ID_FIELD)
+    temperature: float = Field(default=25.0, ge=-40.0, le=125.0)
+    voltage: float = Field(default=3.3, ge=1.0, le=5.0)
+    em_interference: float = Field(default=0.0, ge=0.0, le=100.0)
+
+
+@router.post("/environmental/read")
+def environmental_read(req: EnvReadRequest, service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.environmental_read(req.device_id, req.temperature, req.voltage, req.em_interference)
+    except DeviceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+# ── Anomaly detection ────────────────────────────────────────────────
+
+class AnomalyRequest(BaseModel):
+    device_id: str = Field(**_DEVICE_ID_FIELD)
+    boot_duration_ms: float = Field(default=150.0, ge=0)
+    stage_count: int = Field(default=7, ge=0)
+    passed_stages: int = Field(default=7, ge=0)
+    error_count: int = Field(default=0, ge=0)
+    attack_type: str | None = Field(default=None)
+
+
+@router.post("/anomaly/analyze")
+def anomaly_analyze(req: AnomalyRequest, service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.anomaly_analyze(req.device_id, req.boot_duration_ms, req.stage_count, req.passed_stages, req.error_count, req.attack_type)
+    except DeviceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+# ── Risk assessment ──────────────────────────────────────────────────
+
+class RiskRequest(BaseModel):
+    device_id: str = Field(**_DEVICE_ID_FIELD)
+    signature_valid: bool = Field(default=True)
+    chain_valid: bool = Field(default=True)
+    puf_match_score: float = Field(default=1.0, ge=0.0, le=1.0)
+    anomaly_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    transparency_valid: bool = Field(default=True)
+    pqc_valid: bool = Field(default=True)
+    firmware_integrity: bool = Field(default=True)
+    known_attack: str | None = Field(default=None)
+
+
+@router.post("/risk/assess")
+def risk_assess(req: RiskRequest, service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.risk_assess(req.device_id, req.signature_valid, req.chain_valid, req.puf_match_score, req.anomaly_score, req.transparency_valid, req.pqc_valid, req.firmware_integrity, req.known_attack)
+    except DeviceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/risk/history")
+def risk_history(device_id: str | None = Query(default=None), service: Service = Depends(get_service)) -> list[dict]:
+    return service.db.list_risk_assessments(device_id)
+
+
+# ── Transparency log ────────────────────────────────────────────────
+
+class TransparencyRecordRequest(BaseModel):
+    firmware_id: str = Field(min_length=1, max_length=64)
+    version: str = Field(min_length=1, max_length=32)
+    device_id: str = Field(**_DEVICE_ID_FIELD)
+    payload_sha256: str = Field(min_length=1, max_length=64)
+
+
+@router.post("/transparency/record")
+def transparency_record(req: TransparencyRecordRequest, service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.transparency_record(req.firmware_id, req.version, req.device_id, req.payload_sha256)
+    except DeviceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/transparency/verify/{device_id}/{version}")
+def transparency_verify(device_id: str, version: str, service: Service = Depends(get_service)) -> dict:
+    return service.transparency_verify(device_id, version)
+
+
+@router.get("/transparency/history")
+def transparency_history(service: Service = Depends(get_service)) -> dict:
+    return service.transparency_root_history()
+
+
+# ── Explainable Boot Report ────────────────────────────────────────
+
+@router.get("/boot/report/{device_id}")
+def boot_report(device_id: str, service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.boot_report(device_id)
+    except DeviceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+# ── Performance Metrics ────────────────────────────────────────────
+
+@router.get("/boot/metrics")
+def boot_metrics(
+    device_id: str | None = Query(default=None, pattern=_DEVICE_ID_PATTERN),
+    service: Service = Depends(get_service),
+) -> dict:
+    return service.boot_metrics(device_id)
+
+
+# ── Security Event Timeline ────────────────────────────────────────
+
+@router.get("/security/timeline")
+def security_timeline(
+    device_id: str | None = Query(default=None, pattern=_DEVICE_ID_PATTERN),
+    limit: int = Query(default=50, ge=1, le=500),
+    service: Service = Depends(get_service),
+) -> dict:
+    return service.security_timeline(device_id, limit)
+
+
+# ── Digital Twin ───────────────────────────────────────────────────
+
+@router.get("/twin/{device_id}")
+def digital_twin(device_id: str, service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.digital_twin(device_id)
+    except DeviceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))

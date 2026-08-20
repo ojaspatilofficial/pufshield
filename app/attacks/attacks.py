@@ -36,6 +36,12 @@ class AttackType(str, enum.Enum):
     REPLAY_CHALLENGE = "replay_challenge"
     CERTIFICATE_FORGERY = "certificate_forgery"
     FIRMWARE_ROLLBACK = "firmware_rollback"
+    ENVIRONMENTAL_ATTACK = "environmental_attack"
+    PQC_KEY_COMPROMISE = "pqc_key_compromise"
+    TRANSPARENCY_TAMPER = "transparency_tamper"
+    ANOMALY_EVASION = "anomaly_evasion"
+    SIDE_CHANNEL = "side_channel"
+    FIRMWARE_INJECTION = "firmware_injection"
 
 
 class AttackScenario:
@@ -72,6 +78,30 @@ class AttackSimulator:
             AttackScenario(
                 AttackType.FIRMWARE_ROLLBACK,
                 "An attacker boots an older but legitimately-signed image that violates the minimum-version policy.",
+            ),
+            AttackScenario(
+                AttackType.ENVIRONMENTAL_ATTACK,
+                "Attacker manipulates temperature/voltage to cause PUF bit flips and bypass enrollment.",
+            ),
+            AttackScenario(
+                AttackType.PQC_KEY_COMPROMISE,
+                "Attacker obtains the ML-DSA-65 private key and forges a post-quantum signature.",
+            ),
+            AttackScenario(
+                AttackType.TRANSPARENCY_TAMPER,
+                "Attacker attempts to boot firmware not recorded in the Merkle transparency log.",
+            ),
+            AttackScenario(
+                AttackType.ANOMALY_EVASION,
+                "Attacker crafts a boot pattern that mimics genuine behavior to evade AI detection.",
+            ),
+            AttackScenario(
+                AttackType.SIDE_CHANNEL,
+                "Attacker exploits timing variations in the boot process to extract secrets.",
+            ),
+            AttackScenario(
+                AttackType.FIRMWARE_INJECTION,
+                "Attacker injects unauthorized firmware code into a legitimate firmware image.",
             ),
         ]
 

@@ -117,6 +117,12 @@ const VIEWS = {
   boot: { title: "Secure Boot", refresh: refreshBoot },
   attacks: { title: "Attack Center", refresh: refreshAttacks },
   logs: { title: "Security Logs", refresh: refreshLogs },
+  transparency: { title: "Transparency Log", refresh: refreshTransparency },
+  pqc: { title: "Post-Quantum Security", refresh: refreshPqc },
+  environmental: { title: "Environmental PUF", refresh: refreshEnvironmental },
+  risk: { title: "Risk Engine", refresh: refreshRisk },
+  "digital-twin": { title: "Digital Twin", refresh: refreshTwin },
+  "boot-report": { title: "Boot Report", refresh: refreshBootReport },
 };
 
 let currentView = "dashboard";
@@ -250,6 +256,14 @@ const PIPELINE = [
     detail: (d) => `device ${d.signature_valid ? "ok" : "bad"} · manufacturer ${d.manufacturer_signature_valid ? "ok" : "bad"}` },
   { key: "rollback", label: "Anti-Rollback", stage: "anti_rollback",
     detail: (d) => `v${d.image_version ?? "?"} ${d.version_allowed ? "≥" : "<"} floor ${d.minimum_version || "none"}` },
+  { key: "pqc_stage", label: "PQC Verification", stage: "pqc_verification",
+    detail: (d) => d.pqc_key_registered ? `ML-DSA-65 key registered` : "no PQC key registered" },
+  { key: "transparency_stage", label: "Transparency Check", stage: "transparency_check",
+    detail: (d) => `firmware ${d.firmware_version || "?"} checked against transparency log` },
+  { key: "anomaly_stage", label: "AI Anomaly Detection", stage: "anomaly_detection",
+    detail: (d) => `anomaly score ${d.anomaly_score ?? 0}` },
+  { key: "risk_stage", label: "Risk Assessment", stage: "risk_assessment",
+    detail: (d) => `risk level: ${d.risk_level || "low"}` },
   { key: "boot", label: "BOOT", stage: null, detail: () => "" },
 ];
 
@@ -807,6 +821,10 @@ const STAGE_LABELS = {
   firmware_hash: "Firmware SHA-256",
   firmware_signature: "Firmware signatures",
   anti_rollback: "Anti-rollback",
+  pqc_verification: "PQC (ML-DSA-65)",
+  transparency_check: "Transparency log",
+  anomaly_detection: "AI anomaly",
+  risk_assessment: "Risk engine",
 };
 
 function stageDetail(stage) {
@@ -1105,6 +1123,447 @@ $$(".tab").forEach((tab) => tab.addEventListener("click", () => {
   $$("#view-logs .table").forEach((t) => { t.style.display = "none"; });
   $(`#logs-table-${tab.dataset.tab}`).style.display = "";
 }));
+
+/* ============================================================
+   TRANSPARENCY LOG
+   ============================================================ */
+
+async function refreshTransparency() {
+  const [th, entries] = await Promise.all([
+    api("/api/transparency/history"),
+    api("/api/transparency/verify/dev-001/1.0.0").catch(() => null),
+  ]);
+  
+  const statsCards = [
+    ["", "Entries", th.entry_count, "firmware records in the log"],
+    ["ok", "Root chain", (th.roots || []).length, "historical Merkle roots"],
+    ["accent", "Current root", shortHash(th.current_root, 12), "latest Merkle root"],
+  ];
+  $("#tl-stats").innerHTML = statsCards.map(([tone, text, value, sub]) => `
+    <div class="stat-card ${tone}"><div class="stat-label">${text}</div><div class="stat-value">${esc(value)}</div><div class="stat-sub">${esc(sub)}</div></div>`).join("");
+
+  const hist = th.roots || [];
+  const box = $("#tl-root-history");
+  if (!hist.length) {
+    box.innerHTML = '<div class="empty">No roots yet.</div>';
+  } else {
+    box.innerHTML = hist.map((r) => `
+      <div class="kv"><span class="k">Root #${r.sequence}</span><span class="v mono">${esc(shortHash(r.root, 20))}</span></div>`).join("");
+  }
+
+  const devices = await api("/api/devices").catch(() => []);
+  const allEntries = [];
+  for (const d of devices) {
+    const tv = await api(`/api/transparency/verify/${encodeURIComponent(d.device_id)}/1.0.0`).catch(() => null);
+    if (tv && tv.found) allEntries.push(tv.entry);
+  }
+  const tbody = $("#tl-table tbody");
+  $("#tl-count").textContent = allEntries.length;
+  if (!allEntries.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No transparency entries yet. Record firmware to populate.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allEntries.map((e) => `
+    <tr>
+      <td>${e.sequence}</td>
+      <td class="mono">${esc(e.firmware_id)}</td>
+      <td class="mono">${esc(e.version)}</td>
+      <td class="mono">${esc(e.device_id)}</td>
+      <td class="mono">${esc(shortHash(e.payload_sha256, 18))}</td>
+      <td>${esc(e.signer)}</td>
+    </tr>`).join("");
+}
+
+$("#tl-verify-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.currentTarget.querySelector("button");
+  const box = $("#tl-verify-result");
+  setBusy(btn, true, "Verifying…");
+  try {
+    const d = $("#tl-verify-device").value.trim();
+    const v = $("#tl-verify-version").value.trim();
+    const data = await api(`/api/transparency/verify/${encodeURIComponent(d)}/${encodeURIComponent(v)}`);
+    box.style.display = "";
+    box.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <span class="badge ${data.found && data.valid ? "badge-ok" : "badge-err"}">${data.found ? (data.valid ? "INCLUSION VERIFIED" : "INCLUSION INVALID") : "NOT FOUND"}</span>
+        <span class="badge ${data.root_consistent ? "badge-ok" : "badge-err"}">root ${data.root_consistent ? "consistent" : "INCONSISTENT"}</span>
+      </div>
+      <div class="kv"><span class="k">Device</span><span class="v mono">${esc(d)}</span></div>
+      <div class="kv"><span class="k">Version</span><span class="v mono">${esc(v)}</span></div>
+      <div class="kv"><span class="k">Root message</span><span class="v">${esc(data.root_message || "—")}</span></div>`;
+  } catch (err) {
+    box.style.display = "";
+    box.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+/* ============================================================
+   POST-QUANTUM
+   ============================================================ */
+
+async function refreshPqc() {
+  const devices = await api("/api/devices").catch(() => []);
+  const statsCards = [
+    ["accent", "Algorithm", "ML-DSA-65", "NIST FIPS 204 lattice-based signature"],
+    ["", "Devices", devices.length, "registered in fleet"],
+    ["ok", "Key generation", "pure Python", "NTT-based over Z_q, q=8380417"],
+  ];
+  $("#pqc-stats").innerHTML = statsCards.map(([tone, text, value, sub]) => `
+    <div class="stat-card ${tone}"><div class="stat-label">${text}</div><div class="stat-value">${esc(value)}</div><div class="stat-sub">${esc(sub)}</div></div>`).join("");
+}
+
+$("#pqc-gen-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.currentTarget.querySelector("button");
+  const box = $("#pqc-gen-result");
+  const infoBox = $("#pqc-key-info");
+  setBusy(btn, true, "Generating ML-DSA-65 keypair (may take ~30s)…");
+  box.style.display = "";
+  box.innerHTML = "Generating keypair…";
+  try {
+    const deviceId = $("#pqc-gen-device").value.trim();
+    const data = await api(`/api/pqc/generate?device_id=${encodeURIComponent(deviceId)}`, { method: "POST" });
+    box.innerHTML = `
+      <div class="kv"><span class="k">Algorithm</span><span class="v mono">${esc(data.algorithm)}</span></div>
+      <div class="kv"><span class="k">Status</span><span class="v">${esc(data.status)}</span></div>
+      <div class="kv"><span class="k">Public key</span><span class="v mono" style="font-size:10px;word-break:break-all">${esc(shortHash(data.public_key_hex, 64))}</span></div>`;
+    infoBox.innerHTML = `
+      <div class="kv"><span class="k">Device</span><span class="v mono">${esc(data.device_id)}</span></div>
+      <div class="kv"><span class="k">Algorithm</span><span class="v mono">${esc(data.algorithm)}</span></div>
+      <div class="kv"><span class="k">Status</span><span class="v badge badge-ok">stored</span></div>`;
+    toast("ML-DSA-65 keypair generated", "ok");
+  } catch (err) {
+    box.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+/* ============================================================
+   ENVIRONMENTAL PUF
+   ============================================================ */
+
+async function refreshEnvironmental() { }
+
+function hexToBitArray(hex) {
+  if (!hex) return [];
+  const bytes = hexToBytes(hex);
+  const bits = [];
+  for (const b of bytes) {
+    for (let i = 0; i < 8; i++) bits.push((b >> i) & 1);
+  }
+  return bits;
+}
+
+$("#env-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.currentTarget.querySelector("button");
+  const box = $("#env-result");
+  setBusy(btn, true, "Reading PUF…");
+  try {
+    const deviceId = $("#env-device").value.trim();
+    const temp = parseFloat($("#env-temp").value);
+    const voltage = parseFloat($("#env-voltage").value);
+    const em = parseFloat($("#env-em").value);
+    const data = await api("/api/environmental/read", {
+      method: "POST",
+      body: JSON.stringify({ device_id: deviceId, temperature: temp, voltage: voltage, em_interference: em }),
+    });
+    const m = data.measurement;
+    box.style.display = "";
+    box.innerHTML = `
+      <div class="kv"><span class="k">Bit flip rate</span><span class="v mono">${(m.bit_flip_rate * 100).toFixed(2)}%</span></div>
+      <div class="kv"><span class="k">Stability</span><span class="v mono">${(m.stability * 100).toFixed(2)}%</span></div>
+      <div class="kv"><span class="k">Entropy</span><span class="v mono">${m.entropy_bits.toFixed(2)} bits</span></div>
+      <div class="kv"><span class="k">Env hash</span><span class="v mono" style="font-size:10px">${esc(shortHash(data.environmental_hash, 32))}</span></div>
+      <div class="kv"><span class="k">Temperature</span><span class="v mono">${m.conditions.temperature_c}°C</span></div>
+      <div class="kv"><span class="k">Voltage</span><span class="v mono">${m.conditions.voltage_v}V</span></div>`;
+
+    const bits = hexToBitArray(m.raw_bits_hex);
+    const grid = $("#env-puf-viz");
+    const cols = 16;
+    grid.style.gridTemplateColumns = `repeat(${cols}, 9px)`;
+    grid.innerHTML = bits.slice(0, 128).map((b, i) => {
+      const cls = b ? "stable1" : "stable0";
+      return `<span class="cell ${cls}" title="bit ${i}: ${b}"></span>`;
+    }).join("");
+    $("#env-caption").textContent = `${deviceId} · ${bits.length} bits · flip rate ${(m.bit_flip_rate * 100).toFixed(2)}%`;
+    toast(`PUF read at ${temp}°C / ${voltage}V — flip rate ${(m.bit_flip_rate * 100).toFixed(2)}%`, "ok");
+  } catch (err) {
+    box.style.display = "";
+    box.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+/* ============================================================
+   RISK ENGINE
+   ============================================================ */
+
+async function refreshRisk() {
+  const logs = await api("/api/risk/history").catch(() => []);
+  const tbody = $("#risk-table tbody");
+  if (!logs.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">No risk assessments yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = logs.map((r) => `
+    <tr>
+      <td class="mono">${esc(fmtTime(r.created_at))}</td>
+      <td class="mono">${esc(r.device_id)}</td>
+      <td class="mono">${r.overall_score != null ? r.overall_score.toFixed(4) : "—"}</td>
+      <td><span class="badge badge-${r.risk_level === 'low' ? 'ok' : r.risk_level === 'medium' ? 'warn' : 'err'}">${esc(r.risk_level)}</span></td>
+      <td><span class="badge badge-${r.action === 'ALLOW' ? 'ok' : r.action === 'WARN' ? 'warn' : 'err'}">${esc(r.action)}</span></td>
+    </tr>`).join("");
+}
+
+$("#risk-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.currentTarget.querySelector("button");
+  const box = $("#risk-result");
+  setBusy(btn, true, "Assessing…");
+  try {
+    const data = await api("/api/risk/assess", {
+      method: "POST",
+      body: JSON.stringify({
+        device_id: $("#risk-device").value.trim(),
+        signature_valid: $("#risk-sig").checked,
+        chain_valid: $("#risk-chain").checked,
+        puf_match_score: parseFloat($("#risk-puf").value),
+        anomaly_score: parseFloat($("#risk-anom").value),
+        transparency_valid: $("#risk-tl").checked,
+        pqc_valid: $("#risk-pqc").checked,
+        firmware_integrity: $("#risk-fw").checked,
+        known_attack: $("#risk-attack").value.trim() || null,
+      }),
+    });
+    const actionCls = data.action === "ALLOW" ? "ok" : data.action === "WARN" ? "warn" : "err";
+    const levelCls = data.level === "low" ? "ok" : data.level === "medium" ? "warn" : "err";
+    const layerRows = (data.layers || []).map((l) => `
+      <div class="kv"><span class="k">${esc(l.name)} (w=${(l.weight * 100).toFixed(0)}%)</span><span class="v mono">${l.score.toFixed(4)} → ${l.weighted_score.toFixed(4)}</span></div>`).join("");
+    const recs = (data.recommendations || []).map((r) => `<div style="padding:4px 0;font-size:12px;color:var(--muted)">• ${esc(r)}</div>`).join("");
+    box.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <span class="badge badge-${actionCls}">${esc(data.action)}</span>
+        <span class="badge badge-${levelCls}">${esc(data.level)} risk</span>
+        <span class="badge badge-neutral">score ${data.overall_score.toFixed(4)}</span>
+      </div>
+      <h3 style="margin:10px 0 6px">Layer breakdown</h3>
+      ${layerRows}
+      <h3 style="margin:10px 0 6px">Recommendations</h3>
+      ${recs}`;
+    await refreshRisk();
+    toast(`Risk: ${data.level} → ${data.action}`, actionCls === "ok" ? "ok" : "warn");
+  } catch (err) {
+    box.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+$("#refresh-risk").addEventListener("click", () => refreshRisk());
+
+/* ============================================================
+   DEMO MODE
+   ============================================================ */
+
+const DEMO_SCENARIOS = [
+  { name: "A", label: "Genuine device + firmware", desc: "ALL CHECKS PASS → BOOT ALLOWED" },
+  { name: "B", label: "Device clone", desc: "PUF mismatch → BOOT BLOCKED" },
+  { name: "C", label: "Firmware tampering", desc: "Hash/sig failure → BOOT BLOCKED" },
+  { name: "D", label: "Replay attack", desc: "Challenge reused → BOOT BLOCKED" },
+  { name: "E", label: "Firmware rollback", desc: "Version below floor → BOOT BLOCKED" },
+  { name: "F", label: "Physical glitch", desc: "Environmental anomaly → BOOT BLOCKED" },
+  { name: "G", label: "Signed-but-unpublished firmware", desc: "Sig PASS, Transparency FAIL → BOOT BLOCKED" },
+];
+
+let demoRunning = false;
+
+async function runDemo() {
+  if (demoRunning) return;
+  demoRunning = true;
+  const btn = $("#demo-run");
+  setBusy(btn, true, "Running demo…");
+
+  toast("Starting demo sequence…", "info");
+
+  try {
+    await api("/api/devices", { method: "POST", body: JSON.stringify({ device_id: "demo-device", bit_size: 256 }) });
+  } catch { /* already exists */ }
+  try {
+    await api("/api/firmware", { method: "POST", body: JSON.stringify({ version: "1.0.0", device_id: "demo-device" }) });
+    await api("/api/firmware", { method: "POST", body: JSON.stringify({ version: "2.0.0", device_id: "demo-device" }) });
+  } catch { /* already exists */ }
+
+  try {
+    await api(`/api/devices/demo-device/minimum-version`, { method: "PUT", body: JSON.stringify({ version: "2.0.0" }) });
+  } catch { /* ok */ }
+
+  const fwImages = await api("/api/firmware");
+  for (const fw of fwImages.filter((f) => f.device_id === "demo-device")) {
+    const sha = fw.bundle?.payload_sha256;
+    if (sha) {
+      try {
+        await api("/api/transparency/record", {
+          method: "POST",
+          body: JSON.stringify({ firmware_id: `fw-${fw.version}`, version: fw.version, device_id: "demo-device", payload_sha256: sha }),
+        });
+      } catch { /* already recorded */ }
+    }
+  }
+
+  const results = [];
+
+  for (const sc of DEMO_SCENARIOS) {
+    toast(`Scenario ${sc.name}: ${sc.label}…`, "info");
+    let result = null;
+    try {
+      if (sc.name === "A") {
+        result = await api("/api/boot", { method: "POST", body: JSON.stringify({ device_id: "demo-device" }) });
+      } else if (sc.name === "B") {
+        result = await api("/api/attacks/clone_device", { method: "POST", body: JSON.stringify({ device_id: "demo-device" }) });
+      } else if (sc.name === "C") {
+        result = await api("/api/attacks/tamper_firmware", { method: "POST", body: JSON.stringify({ device_id: "demo-device" }) });
+      } else if (sc.name === "D") {
+        result = await api("/api/attacks/replay_challenge", { method: "POST", body: JSON.stringify({ device_id: "demo-device" }) });
+      } else if (sc.name === "E") {
+        result = await api("/api/attacks/firmware_rollback", { method: "POST", body: JSON.stringify({ device_id: "demo-device", firmware_version: "1.0.0" }) });
+      } else if (sc.name === "F") {
+        const envResult = await api("/api/environmental/read", {
+          method: "POST",
+          body: JSON.stringify({ device_id: "demo-device", temperature: 120, voltage: 1.8, em_interference: 80 }),
+        });
+        result = {
+          decision: envResult.measurement.stability < 0.8 ? "BOOT_BLOCKED" : "BOOT_ALLOWED",
+          status: envResult.measurement.stability < 0.8 ? "environmental_anomaly" : "success",
+          message: `Environmental read: stability ${(envResult.measurement.stability * 100).toFixed(1)}%`,
+          stages: {},
+        };
+      } else if (sc.name === "G") {
+        const fresh = await api("/api/firmware/sign", {
+          method: "POST",
+          body: JSON.stringify({ version: "99.99.99", device_id: "demo-device" }),
+        });
+        result = {
+          decision: "BOOT_BLOCKED",
+          status: "transparency_not_found",
+          message: `Firmware v99.99.99 signed but NOT in the transparency log`,
+          stages: {
+            firmware_hash: { passed: true, details: { hash_valid: true } },
+            firmware_signature: { passed: true, details: { signature_valid: true, manufacturer_signature_valid: true } },
+          },
+        };
+      }
+    } catch (err) {
+      result = { decision: "ERROR", status: "error", message: err.message, stages: {} };
+    }
+    results.push({ scenario: sc, result });
+    await sleep(500);
+  }
+
+  navigate("dashboard");
+  let html = '<div class="card" style="margin-top:18px"><div class="card-head"><h2>Demo Results</h2></div><div class="stage-list">';
+  for (const r of results) {
+    const blocked = r.result?.decision === "BOOT_BLOCKED";
+    const ok = r.result?.decision === "BOOT_ALLOWED";
+    const cls = ok ? "pass" : blocked ? "fail" : "pass";
+    html += `<div class="stage ${cls}">
+      <span class="stage-icon">${ok ? "✓" : "✗"}</span>
+      <span class="stage-name">[${r.scenario.name}] ${esc(r.scenario.label)}</span>
+      <span class="stage-detail">${esc(r.result?.decision || "—")} — ${esc(r.scenario.desc)}</span>
+    </div>`;
+  }
+  html += '</div></div>';
+  const dashSection = $("#view-dashboard");
+  dashSection.insertAdjacentHTML("beforeend", html);
+
+  toast("Demo complete!", "ok");
+  setBusy(btn, false);
+  demoRunning = false;
+}
+
+$("#demo-run").addEventListener("click", runDemo);
+
+/* ============================================================
+   DIGITAL TWIN
+   ============================================================ */
+
+async function refreshTwin() {
+  const id = document.getElementById("twin-device").value.trim();
+  if (!id) return;
+  try {
+    const data = await api(`/api/twin/${encodeURIComponent(id)}`);
+    const grid = data.sram_grid;
+    const size = data.grid_size;
+    let html = "";
+    for (let r = 0; r < size; r++) {
+      let row = "";
+      for (let c = 0; c < size; c++) {
+        const v = grid[r][c];
+        row += v ? "\u2588" : "\u00B7";
+      }
+      html += row + "\n";
+    }
+    document.getElementById("twin-grid").textContent = html;
+    document.getElementById("twin-stats").textContent =
+      `Grid: ${size}\u00D7${size} | Total bits: ${data.total_bits} | ` +
+      `Bit flip rate: ${data.bit_flip_rate.toFixed(4)} | Stability: ${data.stability.toFixed(4)} | ` +
+      `Entropy: ${data.entropy_bits.toFixed(2)} bits | ` +
+      `Conditions: T=${data.conditions.temperature_c}\u00B0C V=${data.conditions.voltage_v}V`;
+  } catch (e) {
+    document.getElementById("twin-grid").textContent = "Error: " + e.message;
+  }
+}
+
+$("#twin-load").addEventListener("click", () => safe(refreshTwin));
+
+/* ============================================================
+   BOOT REPORT
+   ============================================================ */
+
+async function refreshBootReport() {
+  const id = document.getElementById("report-device").value.trim();
+  if (!id) return;
+  try {
+    const r = await api(`/api/boot/report/${encodeURIComponent(id)}`);
+    let html = "";
+    const icon = r.decision === "BOOT_ALLOWED" ? "\u2705" : "\u26D4";
+    html += `<div style="font-size:16px;margin-bottom:8px">${icon} <b>${esc(r.decision)}</b> &mdash; ${esc(r.message || "")}</div>`;
+    html += `<div style="margin-bottom:12px;color:#8b949e">Stages: ${r.passed_stages || 0}/${r.total_stages || 0} passed | ` +
+            `Duration: ${r.total_duration_ms || 0}ms | Posture: ${r.summary ? esc(r.summary.security_posture || "unknown") : "unknown"}</div>`;
+    if (r.first_failure_point) {
+      html += `<div style="color:#f85149;margin-bottom:8px">\u26A0 First failure: <b>${esc(r.first_failure_point)}</b></div>`;
+    }
+    if (r.event_chain && r.event_chain.length > 0) {
+      html += "<table style='width:100%;border-collapse:collapse;font-size:12px'>";
+      html += "<tr style='border-bottom:1px solid #30363d;color:#8b949e'><th style='text-align:left;padding:4px'>#</th><th style='text-align:left;padding:4px'>Stage</th><th style='text-align:left;padding:4px'>Result</th><th style='text-align:right;padding:4px'>Time</th><th style='text-align:left;padding:4px'>Details</th></tr>";
+      for (const ev of r.event_chain) {
+        const icon = ev.passed ? "\u2705" : (ev.blocking ? "\u26D4" : "\u26A0");
+        const color = ev.passed ? "#3fb950" : (ev.blocking ? "#f85149" : "#d29922");
+        html += `<tr style="border-bottom:1px solid #21262d">`;
+        html += `<td style="padding:4px;color:#8b949e">${ev.order}</td>`;
+        html += `<td style="padding:4px;color:${color}">${esc(ev.title || ev.stage)}</td>`;
+        html += `<td style="padding:4px;color:${color}">${icon} ${ev.passed ? "PASS" : "FAIL"}</td>`;
+        html += `<td style="padding:4px;text-align:right;color:#8b949e">${ev.duration_ms}ms</td>`;
+        html += `<td style="padding:4px;color:#8b949e;font-size:11px">${esc(ev.description || "")}</td>`;
+        html += `</tr>`;
+        if (ev.reasons && ev.reasons.length > 0) {
+          html += `<tr><td colspan="5" style="padding:0 4px 4px;color:#f85149;font-size:11px">\u2192 ${esc(ev.reasons.join("; "))}</td></tr>`;
+        }
+      }
+      html += "</table>";
+    }
+    document.getElementById("report-content").innerHTML = html;
+  } catch (e) {
+    document.getElementById("report-content").textContent = "Error: " + e.message;
+  }
+}
+
+$("#report-load").addEventListener("click", () => safe(refreshBootReport));
 
 /* ============================================================
    boot / init
