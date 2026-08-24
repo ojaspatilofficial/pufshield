@@ -4,7 +4,7 @@
 
 PUFShield demonstrates a hardware-rooted-of-trust boot and device-authentication
 flow: an SRAM PUF power-up fingerprint is combined with X.509 certificates and a
-seven-stage secure-boot pipeline so that only genuine, provisioned devices can
+11-stage secure-boot pipeline (8 blocking + 3 informational) so that only genuine, provisioned devices can
 boot cryptographically verified firmware.
 
 > **IMPORTANT — proof-of-concept notice.**
@@ -333,19 +333,23 @@ client-supplied payload without storing it (`store: true` persists it).
 
 ## Secure Boot Flow
 
-The complete boot engine (`app/secureboot/verify.py`) runs **seven mandatory
-stages in order** and reports each in the result. A failure in any stage blocks
-boot (`BOOT_BLOCKED`):
+The complete boot engine (`app/secureboot/verify.py`) runs **11 stages in order**
+— 8 mandatory (blocking) and 3 informational — and reports each in the result.
+A failure in any blocking stage stops boot (`BOOT_BLOCKED`):
 
-| # | Stage | What is verified | Threat caught |
-|---|-------|------------------|---------------|
-| 1 | `puf_recovery` | SRAM PUF re-read + fuzzy error-correction reproduces the enrolled credential | Cloned hardware, wrong PUF |
-| 2 | `puf_pki_binding` | Recovered secret recomputes the registered PUF-to-key binding | Certificate/key copied onto different hardware |
-| 3 | `certificate_verification` | Device certificate chains to the root CA (RFC 5280) | Forged / rogue certificates |
-| 4 | `challenge_response` | One-time nonce signed by the device's private key (consumed atomically) | Replay, stolen-key possession proof |
-| 5 | `firmware_hash` | Loaded payload reproduces the registered SHA-256 digest | Tampered binary |
-| 6 | `firmware_signature` | Device signature vs certified key **and** manifest vs manufacturer key | Wrong / unauthorized signer |
-| 7 | `anti_rollback` | Image version satisfies the device minimum version | Downgrade to old firmware |
+| # | Stage | Type | What is verified | Threat caught |
+|---|-------|------|------------------|---------------|
+| 1 | `puf_recovery` | Blocking | SRAM PUF re-read + fuzzy error-correction reproduces the enrolled credential | Cloned hardware, wrong PUF |
+| 2 | `puf_pki_binding` | Blocking | Recovered secret recomputes the registered PUF-to-key binding | Certificate/key copied onto different hardware |
+| 3 | `certificate_verification` | Blocking | Device certificate chains to the root CA (RFC 5280) | Forged / rogue certificates |
+| 4 | `challenge_response` | Blocking | One-time nonce signed by the device's private key (consumed atomically) | Replay, stolen-key possession proof |
+| 5 | `firmware_hash` | Blocking | Loaded payload reproduces the registered SHA-256 digest | Tampered binary |
+| 6 | `firmware_signature` | Blocking | Device signature vs certified key **and** manifest vs manufacturer key | Wrong / unauthorized signer |
+| 7 | `anti_rollback` | Blocking | Image version satisfies the device minimum version | Downgrade to old firmware |
+| 8 | `pqc_readiness` | Informational | Post-quantum cryptography key registration status | Future PQC preparedness |
+| 9 | `transparency_log` | Informational | Merkle tree inclusion proof for boot record | Audit trail integrity |
+| 10 | `anomaly_detection` | Informational | Z-score + EWMA composite anomaly scoring | Behavioral anomalies |
+| 11 | `risk_assessment` | Informational | 7-layer weighted risk score against thresholds | Cumulative risk |
 
 Each boot returns:
 
@@ -383,6 +387,30 @@ evaluates a version authenticated by a valid manufacturer signature:
    (`BOOT_ALLOWED`); the engine never hardcodes a "blocked" outcome.
 4. **Logging** — every rejection/success records image version, minimum, and
    `version_allowed` in the audit log and `/api/firmware/verify`.
+
+## Advanced Security Features
+
+Beyond the core boot pipeline, PUFShield includes several advanced security
+mechanisms (currently informational / demo-grade):
+
+- **Post-Quantum Cryptography** (`app/pqcrypto/mldsa.py`) — ML-DSA-65
+  (FIPS 204) key generation for future-proofing against quantum attacks.
+  Key generation works; full sign/verify integration is deferred.
+- **Zero-Knowledge Proof** (`app/zkp/schnorr.py`) — Schnorr ZKP with both
+  interactive and Fiat-Shamir (non-interactive) modes. Demonstrates that a
+  device can prove knowledge of a secret without revealing it.
+- **Anomaly Detection** (`app/ai/anomaly.py`) — Z-score + EWMA composite
+  scoring on boot timing, authentication patterns, and device behavior.
+- **Risk Engine** (`app/risk/engine.py`) — 7-layer weighted scoring that
+  aggregates device age, firmware freshness, authentication history, anomaly
+  signals, boot success rate, environment, and update compliance into a single
+  risk score with LOW/MEDIUM/HIGH/CRITICAL classification.
+- **Merkle Transparency Log** (`app/transparency/merkle.py`) — append-only
+  Merkle tree recording boot decisions with inclusion proofs for auditability.
+- **Environmental PUF Simulation** (`app/ai/environment.py`) — Arrhenius model
+  simulating temperature/voltage effects on SRAM PUF stability.
+- **PUF Digital Twin** (`app/frontend/static/js/app.js`) — interactive 16x16
+  SRAM cell grid visualization showing real-time PUF state.
 
 ## Threat Model
 
@@ -499,6 +527,28 @@ Interactive docs are available at `http://127.0.0.1:8000/docs` (OpenAPI).
 | GET | `/api/security/events` | Unified security event feed (filter by `event_type`/`device_id`) |
 | GET | `/api/dashboard/stats` | Dashboard statistics (devices, firmware, boots, auth, attacks, events, PUF) |
 
+## Web Dashboard
+
+The project includes a full web interface served by the FastAPI backend:
+
+- **Public pages** (`/`, `/about`, `/features`, `/how-it-works`, `/architecture`,
+  `/demo`) — white/blue/green themed marketing site describing the project
+- **Login** (`/login`) and **Register** (`/register`) — demo authentication
+  (credentials: `admin` / `pufshield`)
+- **Dashboard** (`/dashboard`) — protected security console with:
+  - Device management with PUF enrollment
+  - Certificate management with chain view
+  - Secure boot monitor with stage-by-stage results
+  - Attack center for security testing
+  - Real-time security event logging
+  - PUF digital twin (16x16 SRAM cell grid)
+- **Architecture diagrams** (`docs/`) — 4 interactive HTML diagrams for
+  presentation:
+  - Full system architecture (10-layer)
+  - 11-stage boot pipeline timeline
+  - Enrollment + authentication flow
+  - 6 attack class detection matrix
+
 ## Installation
 
 **Requirements**
@@ -563,26 +613,38 @@ Tests run against an isolated temporary database and key store (see
 Run with `pytest -q`:
 
 ```
-263 passed, 1 skipped  (264 collected)
+336 passed, 1 skipped  (337 collected)
 ```
 
 The suite includes an RFC 5869 HKDF test vector (`test_fuzzy.py`), a
 mixed-size fleet regression test, a dedicated 11-test security suite
 (`test_security_suite.py`), and a thread-safety test that exercises the
-shared SQLite connection from a worker thread.
+shared SQLite connection from a worker thread. There are **24 test files**
+covering all subsystems including PQC, ZKP, anomaly detection, risk engine,
+Merkle tree, and environmental PUF.
 
 | Area | Files | Coverage |
 |------|-------|----------|
-| Unit — fuzzy extraction & KDF | `test_fuzzy.py` | BCH encode/decode, noise tolerance, key derivation, binding |
-| Unit — PUF enrollment & binding | `test_binding.py` | reproducibility, foreign-key rejection, clone detection |
-| Unit — PKI | `test_pki.py` | chain verification, forgery, expiry, key usage |
-| Unit — firmware & rollback | `test_firmware.py`, `test_rollback.py` | dual signatures, version parsing, anti-rollback policy |
-| Unit — auth | `test_auth.py` | challenge lifecycle, replay rejection, binding |
-| Integration — boot engine | `test_boot_engine.py` | all seven stages, per-stage checks, decisions |
-| Integration — API | `test_api*.py` | every REST endpoint, status codes, error paths |
-| Persistence | `test_database_persistence.py` | cascade deletes, audit retention, re-provision |
-| Security suite | `test_security_suite.py` | the eight requested threat scenarios below |
-| Attack Center | `test_attack_center.py` | real simulations + detection points + records |
+| Unit — PUF | `test_puf.py` | PUF generation, uniqueness, noise simulation |
+| Unit — Enrollment | `test_enrollment.py` | Enrollment process, metrics, credential derivation |
+| Unit — Fuzzy extraction & KDF | `test_fuzzy.py` | BCH encode/decode, noise tolerance, key derivation, binding |
+| Unit — PUF binding | `test_binding.py` | Reproducibility, foreign-key rejection, clone detection |
+| Unit — PKI | `test_pki.py` | Chain verification, forgery, expiry, key usage |
+| Unit — Firmware & rollback | `test_firmware.py`, `test_rollback.py` | Dual signatures, version parsing, anti-rollback policy |
+| Unit — Auth | `test_auth.py` | Challenge lifecycle, replay rejection, binding |
+| Unit — Crypto | `test_crypto.py` | Cryptographic primitives |
+| Unit — PQC | — | ML-DSA-65 key generation |
+| Unit — ZKP | `test_zkp.py` | Schnorr proof generation and verification |
+| Unit — Anomaly | `test_anomaly.py` | Z-score + EWMA composite scoring |
+| Unit — Risk engine | `test_risk_engine.py` | 7-layer weighted risk scoring |
+| Unit — Merkle | `test_merkle.py` | Merkle tree operations and proofs |
+| Unit — Environmental | `test_environment.py` | Arrhenius environmental PUF simulation |
+| Integration — boot engine | `test_boot_engine.py` | all 11 stages, per-stage checks, decisions |
+| Integration — secure boot | `test_secureboot.py` | End-to-end secure boot flow |
+| Integration — API | `test_api.py`, `test_api_endpoints.py`, `test_new_endpoints.py` | Every REST endpoint, status codes, error paths |
+| Persistence | `test_database_persistence.py` | Cascade deletes, audit retention, re-provision |
+| Security suite | `test_security_suite.py` | The eight threat scenarios below |
+| Attack Center | `test_attack_center.py` | Real simulations + detection points + records |
 
 **Security scenario results** (`tests/test_security_suite.py`)
 
@@ -616,8 +678,9 @@ shared SQLite connection from a worker thread.
 - **No secure update protocol.** Firmware is signed and verified, but there is
   no over-the-air update handshake, rollback-recovery mechanism, or code
   signing PKI for the update channel.
-- **Single-user API.** The REST API has no authentication/authorization of its
-  own; it is a demonstration backend, not a multi-tenant service.
+- **Single-user demo auth.** The web dashboard uses a simple in-memory session
+  store with a hardcoded demo user (`admin`/`pufshield`). This is for
+  hackathon demonstration only; production would use proper user management.
 - **Side-channel / physical attacks not modelled.** No power, EM, timing, or
   fault-injection models are included.
 - **No persistent device-side key storage model.** In the simulation the
