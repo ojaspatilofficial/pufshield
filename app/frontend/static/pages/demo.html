@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#F6F8FB">
+  <meta name="description" content="PUFShield interactive demo — see secure boot in action with real-time verification pipeline and attack simulation.">
+  <title>Interactive Demo | PUFShield Hardware Security Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/static/css/public.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-brand">
+        <svg viewBox="0 0 32 32" width="28" height="28"><path d="M16 3 27 8v7c0 7.4-4.8 12.2-11 14C9.8 27.2 5 22.4 5 15V8z" fill="none" stroke="#16A36A" stroke-width="2"/><path d="M12 16l3 3 5-6" fill="none" stroke="#2F80ED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="nav-brand-text"><div class="nav-brand-name">PUFShield</div><div class="nav-brand-sub">Hardware Security Platform</div></div>
+      </a>
+      <div class="nav-links" id="nav-links">
+        <a href="/about">About</a><a href="/features">Features</a><a href="/how-it-works">How It Works</a><a href="/architecture">Architecture</a><a href="/demo" class="active">Demo</a>
+      </div>
+      <div class="nav-actions"><a href="/login" class="nav-btn nav-btn-ghost">Login</a><a href="/login?redirect=/dashboard" class="nav-btn nav-btn-primary" id="open-console-btn">Open Console</a></div>
+      <button class="nav-mobile-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <!-- DEMO HERO -->
+  <section class="section" style="padding-top:140px;padding-bottom:80px;background:linear-gradient(180deg, var(--white) 0%, var(--bg) 100%) !important;">
+    <div class="container text-center animate-on-scroll">
+      <h2 style="font-size:2.75rem;margin-bottom:16px;">See Secure Boot in Action</h2>
+      <p style="font-size:1.3rem;color:var(--accent-blue) !important;font-weight:600;margin-bottom:20px;">Explore how PUFShield evaluates a device before allowing it to boot.</p>
+      <p style="max-width:720px;margin:0 auto;font-size:1.05rem;line-height:1.8;">This demo connects to the live backend API and runs real cryptographic verification. No mock data — every check is the real thing.</p>
+    </div>
+  </section>
+
+  <!-- DEMO CONTROLS -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="text-center animate-on-scroll">
+        <h2>Run a Secure Boot</h2>
+        <p style="max-width:640px;margin:16px auto 0;">Enter a device ID and trigger a full boot verification pipeline against the backend.</p>
+      </div>
+
+      <div class="demo-controls animate-on-scroll" style="margin-top:36px;">
+        <input type="text" id="demo-device-input" value="demo-device" placeholder="Device ID" style="padding:12px 16px;font-size:0.95rem;font-family:var(--sans);border:1px solid var(--border);border-radius:10px;background:var(--white) !important;color:var(--text) !important;width:260px;outline:none;transition:all 0.2s ease;" onfocus="this.style.borderColor='var(--accent-blue)';this.style.boxShadow='0 0 0 3px rgba(47,128,237,0.1)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+        <button id="demo-run-btn" class="demo-btn demo-btn-primary">Run Security Demo</button>
+      </div>
+
+      <!-- Device Info -->
+      <div id="demo-device-info" class="animate-on-scroll" style="max-width:800px;margin:0 auto;"></div>
+
+      <!-- Status Cards -->
+      <div id="demo-status-cards" class="animate-on-scroll" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:800px;margin:32px auto 0;">
+        <div class="demo-status-card" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px;text-align:center;transition:all 0.3s ease;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(47,128,237,0.08);color:var(--accent-blue);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted) !important;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">PUF Status</div>
+          <div id="demo-puf-status" style="font-size:0.85rem;font-weight:600;color:var(--text-muted) !important;">--</div>
+        </div>
+        <div class="demo-status-card" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px;text-align:center;transition:all 0.3s ease;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(22,163,106,0.08);color:var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          </div>
+          <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted) !important;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Firmware Status</div>
+          <div id="demo-firmware-status" style="font-size:0.85rem;font-weight:600;color:var(--text-muted) !important;">--</div>
+        </div>
+        <div class="demo-status-card" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px;text-align:center;transition:all 0.3s ease;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(18,59,109,0.08);color:var(--navy);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,17 10,11 4,5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
+          <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted) !important;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">PKI Status</div>
+          <div id="demo-pki-status" style="font-size:0.85rem;font-weight:600;color:var(--text-muted) !important;">--</div>
+        </div>
+        <div class="demo-status-card" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px;text-align:center;transition:all 0.3s ease;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,0.08);color:var(--amber);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+          </div>
+          <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted) !important;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">PQC Status</div>
+          <div id="demo-pqc-status" style="font-size:0.85rem;font-weight:600;color:var(--text-muted) !important;">--</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VERIFICATION PIPELINE -->
+  <section class="section">
+    <div class="container">
+      <div class="text-center animate-on-scroll">
+        <h2>Verification Pipeline</h2>
+        <p style="max-width:640px;margin:16px auto 0;">Watch each stage of the 12-step boot verification execute in real time against the backend.</p>
+      </div>
+
+      <div id="demo-pipeline" class="demo-pipeline animate-on-scroll" style="margin-top:48px;">
+        <div class="demo-stage pending" id="demo-stage-init">
+          <div class="demo-stage-icon">1</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">Initializing Device</div>
+            <div class="demo-stage-detail">Connecting to device and preparing boot sequence</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-puf">
+          <div class="demo-stage-icon">2</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">Reading SRAM PUF</div>
+            <div class="demo-stage-detail">Capturing silicon startup pattern for device fingerprint</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-identity">
+          <div class="demo-stage-icon">3</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">Recovering Identity</div>
+            <div class="demo-stage-detail">Fuzzy extraction and HKDF key derivation from PUF response</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-cert">
+          <div class="demo-stage-icon">4</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">Verifying Certificate</div>
+            <div class="demo-stage-detail">X.509 certificate chain validation against manufacturer CA</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-challenge">
+          <div class="demo-stage-icon">5</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">Challenge-Response</div>
+            <div class="demo-stage-detail">One-time cryptographic challenge to prove device possession of private key</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-hash">
+          <div class="demo-stage-icon">6</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">Firmware Hash</div>
+            <div class="demo-stage-detail">SHA-256 integrity verification of firmware payload</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-signature">
+          <div class="demo-stage-icon">7</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">Signature Verification</div>
+            <div class="demo-stage-detail">ECDSA device and manufacturer firmware signature validation</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-pqc">
+          <div class="demo-stage-icon">8</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">PQC Verification</div>
+            <div class="demo-stage-detail">ML-DSA-65 post-quantum lattice-based signature verification</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-transparency">
+          <div class="demo-stage-icon">9</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">Transparency Check</div>
+            <div class="demo-stage-detail">Merkle tree inclusion proof against firmware transparency log</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-anomaly">
+          <div class="demo-stage-icon">10</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">AI Anomaly Detection</div>
+            <div class="demo-stage-detail">Behavioral and environmental analysis for signs of tampering</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-risk">
+          <div class="demo-stage-icon">11</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">Risk Assessment</div>
+            <div class="demo-stage-detail">Composite trust score aggregation across all verification layers</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+        <div class="demo-stage-connector"></div>
+
+        <div class="demo-stage pending" id="demo-stage-decision">
+          <div class="demo-stage-icon">12</div>
+          <div class="demo-stage-info">
+            <div class="demo-stage-name">Boot Decision</div>
+            <div class="demo-stage-detail">Final determination based on all verification results</div>
+          </div>
+          <div class="demo-stage-time">--</div>
+        </div>
+      </div>
+
+      <!-- Demo Result -->
+      <div id="demo-result" class="demo-result animate-on-scroll" style="display:none;"></div>
+    </div>
+  </section>
+
+  <!-- ATTACK SIMULATION -->
+  <section class="section section-alt" id="attack-center">
+    <div class="container">
+      <div class="text-center animate-on-scroll">
+        <h2>Test the Defenses</h2>
+        <p style="max-width:640px;margin:16px auto 0;">Simulate real attacks to see PUFShield's detection capabilities.</p>
+      </div>
+
+      <div class="demo-attacks-grid animate-on-scroll">
+
+        <!-- 1 - Device Clone -->
+        <div class="demo-attack-card">
+          <div class="demo-attack-name">Device Clone</div>
+          <div class="demo-attack-desc">Attempt to replicate a device's PUF identity by copying enrollment data to a different physical device.</div>
+          <button class="demo-attack-btn" data-attack="clone_device">Simulate</button>
+        </div>
+
+        <!-- 2 - Firmware Tampering -->
+        <div class="demo-attack-card">
+          <div class="demo-attack-name">Firmware Tampering</div>
+          <div class="demo-attack-desc">Modify firmware payload to bypass integrity checks and inject unauthorized code.</div>
+          <button class="demo-attack-btn" data-attack="tamper_firmware">Simulate</button>
+        </div>
+
+        <!-- 3 - Replay Attack -->
+        <div class="demo-attack-card">
+          <div class="demo-attack-name">Replay Attack</div>
+          <div class="demo-attack-desc">Reuse a captured authentication challenge to impersonate a legitimate device.</div>
+          <button class="demo-attack-btn" data-attack="replay_challenge">Simulate</button>
+        </div>
+
+        <!-- 4 - Firmware Rollback -->
+        <div class="demo-attack-card">
+          <div class="demo-attack-name">Firmware Rollback</div>
+          <div class="demo-attack-desc">Downgrade to an older, vulnerable firmware version to exploit known weaknesses.</div>
+          <button class="demo-attack-btn" data-attack="firmware_rollback">Simulate</button>
+        </div>
+
+        <!-- 5 - Certificate Forgery -->
+        <div class="demo-attack-card">
+          <div class="demo-attack-name">Certificate Forgery</div>
+          <div class="demo-attack-desc">Present an invalid certificate chain that does not trace back to the trusted manufacturer CA.</div>
+          <button class="demo-attack-btn" data-attack="certificate_forgery">Simulate</button>
+        </div>
+
+        <!-- 6 - Wrong Signer -->
+        <div class="demo-attack-card">
+          <div class="demo-attack-name">Wrong Signer</div>
+          <div class="demo-attack-desc">Sign firmware with an unauthorized key to test whether signature validation catches the mismatch.</div>
+          <button class="demo-attack-btn" data-attack="wrong_signer">Simulate</button>
+        </div>
+
+      </div>
+
+      <!-- Attack Result -->
+      <div id="demo-attack-result" class="demo-result animate-on-scroll" style="display:none;margin-top:48px;"></div>
+
+    </div>
+  </section>
+
+  <!-- CTA SECTION -->
+  <section class="cta-section">
+    <div class="cta-content">
+      <h2 class="cta-title">Ready to inspect the security architecture?</h2>
+      <p class="cta-subtitle">Explore the platform or open the full security console.</p>
+      <div class="cta-actions">
+        <a href="/features" class="hero-btn hero-btn-primary">Explore the Platform</a>
+        <a href="/login?redirect=/dashboard" class="hero-btn hero-btn-secondary">Open Console</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="/" class="nav-brand" style="margin-bottom:12px;display:inline-flex;">
+          <svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 2L4 9V17.5C4 26.04 9.88 33.98 18 36C26.12 33.98 32 26.04 32 17.5V9L18 2Z" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+            <path d="M18 10L11 13.5V19C11 23.7 13.88 28.08 18 29.5C22.12 28.08 25 23.7 25 19V13.5L18 10Z" fill="white" opacity="0.9"/>
+            <path d="M15.5 19L17.5 21L21.5 16" stroke="#123B6D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="nav-brand-name" style="color:#fff !important;">PUFShield</span>
+        </a>
+        <p class="footer-brand-tagline">Hardware-rooted secure boot and device authentication platform for the post-quantum era.</p>
+      </div>
+      <div class="footer-columns">
+        <div class="footer-col">
+          <div class="footer-col-title">Platform</div>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/dashboard#digital-twin">Digital Twin</a>
+          <a href="/demo#secure-boot">Secure Boot</a>
+          <a href="/demo#attack-center">Attack Center</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Security</div>
+          <a href="/features#sram-puf">SRAM PUF</a>
+          <a href="/features#pki">PKI</a>
+          <a href="/features#pqc">PQC</a>
+          <a href="/features#zkp">ZKP</a>
+          <a href="/features#transparency">Transparency</a>
+          <a href="/features#ai-detection">AI Detection</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Resources</div>
+          <a href="/about">About</a>
+          <a href="/how-it-works">How It Works</a>
+          <a href="/architecture">Architecture</a>
+          <a href="/demo">Demo</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Project</div>
+          <a href="https://github.com/pufshield/docs">Documentation</a>
+          <a href="/about#technology">Technology</a>
+          <a href="/architecture#security">Security Architecture</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div class="footer-bottom-text">&copy; 2026 PUFShield</div>
+        <div class="footer-bottom-divider"></div>
+        <div class="footer-bottom-text">Hardware Security &bull; Cryptographic Trust &bull; Secure Boot</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/js/public.js"></script>
+</body>
+</html>

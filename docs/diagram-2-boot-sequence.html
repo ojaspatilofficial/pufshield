@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PUFShield — Secure Boot Sequence</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{background:#0b1120;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding:30px}.w{max-width:880px;margin:0 auto}h1{color:#f8fafc;font-size:25px}h1 b{color:#3b82f6}.sub{color:#94a3b8;font-size:13px;margin:4px 0 22px}.tl{position:relative;padding-left:34px}.tl:before{content:'';position:absolute;left:10px;top:10px;bottom:10px;width:2px;background:#1e293b}.st{position:relative;background:#111827;border:1px solid #1e293b;border-radius:10px;padding:9px 14px;margin-bottom:9px;display:flex;align-items:center;gap:12px}.st:before{content:'';position:absolute;left:-30px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;background:#0b1120;border:3px solid #3b82f6}.bl{border-left:3px solid #ef4444}.in{border-left:3px solid #06b6d4}.tg{font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:4px;flex-shrink:0}.tb{background:rgba(239,68,68,.13);color:#ef4444;border:1px solid rgba(239,68,68,.35)}.ti{background:rgba(6,182,212,.13);color:#06b6d4;border:1px solid rgba(6,182,212,.35)}.nm{font-weight:600;font-size:13.5px;color:#f8fafc}.ds{font-size:11.5px;color:#94a3b8;margin-top:1px}code{color:#06b6d4;font-family:Consolas,monospace;font-size:11px}.ms{margin-left:auto;font-family:monospace;font-size:11px;color:#f59e0b;flex-shrink:0}.pw{border-color:#3b82f6}.dec{background:#111827;border:1px dashed #64748b;border-radius:10px;padding:10px;text-align:center;font-weight:700;color:#f8fafc;font-size:14px;margin:14px 0}.out{display:flex;gap:14px;margin-bottom:22px}.ok,.no{flex:1;text-align:center;padding:12px;border-radius:10px;font-weight:700;font-size:15px}.ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.4);color:#22c55e}.no{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:#ef4444}.card{background:#111827;border:1px solid #1e293b;border-radius:10px;padding:14px 16px;margin-bottom:16px}.card h2{font-size:12px;color:#f8fafc;margin-bottom:10px;letter-spacing:.5px}.fl{list-style:none;font-size:12px;color:#94a3b8}.fl li{padding:3px 0 3px 18px;position:relative}.fl li:before{content:'✗';position:absolute;left:0;color:#ef4444}.fl code{color:#f59e0b}.tr{display:flex;align-items:center;gap:10px;font-size:11px;margin:5px 0}.tr span{width:170px;color:#94a3b8;flex-shrink:0}.tr i{height:8px;border-radius:4px;display:block}.tr b{font-family:monospace;color:#f59e0b;font-weight:400}.nt{font-size:11.5px;color:#fbbf24;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:9px 13px}
+</style>
+</head>
+<body>
+<div class="w">
+<h1><b>PUF</b>Shield — Secure Boot Sequence</h1>
+<div class="sub">11-Stage Boot Pipeline · Stages 1–8 are blocking gates · Stages 9–11 are informational telemetry</div>
+<div class="tl">
+<div class="st pw"><span class="tg" style="background:rgba(59,130,246,.13);color:#3b82f6;border:1px solid rgba(59,130,246,.35)">START</span><div><div class="nm">POWER ON</div><div class="ds">Boot Initiated</div></div></div>
+<div class="st bl"><span class="tg tb">BLOCKING</span><div><div class="nm">Stage 1 · SRAM PUF Measurement</div><div class="ds"><code>puf.read_raw_response()</code> — raw response captured from uninitialized SRAM</div></div><span class="ms">~3ms</span></div>
+<div class="st bl"><span class="tg tb">BLOCKING</span><div><div class="nm">Stage 2 · PUF Reconstruction</div><div class="ds"><code>BCH(31,16,7)</code> fuzzy extraction — helper-data decode + credential match</div></div><span class="ms">~5ms</span></div>
+<div class="st bl"><span class="tg tb">BLOCKING</span><div><div class="nm">Stage 3 · PUF-PKI Binding</div><div class="ds"><code>HKDF(Secret+DER_spki)</code> recompute — clone detection via binding hash</div></div><span class="ms">~2ms</span></div>
+<div class="st bl"><span class="tg tb">BLOCKING</span><div><div class="nm">Stage 4 · Certificate Chain</div><div class="ds">RFC 5280 X.509 full-chain validation against trust store</div></div><span class="ms">~4ms</span></div>
+<div class="st bl"><span class="tg tb">BLOCKING</span><div><div class="nm">Stage 5 · Challenge-Response</div><div class="ds">32-byte nonce · <code>ECDSA P-256</code> signature · atomic nonce consume</div></div><span class="ms">~8ms</span></div>
+<div class="st bl"><span class="tg tb">BLOCKING</span><div><div class="nm">Stage 6 · Firmware SHA-256</div><div class="ds">Hash verification of firmware binary against manifest digest</div></div><span class="ms">~1ms</span></div>
+<div class="st bl"><span class="tg tb">BLOCKING</span><div><div class="nm">Stage 7 · Firmware Signature</div><div class="ds">Dual <code>ECDSA</code> verification — device key + manufacturer key</div></div><span class="ms">~3ms</span></div>
+<div class="st bl"><span class="tg tb">BLOCKING</span><div><div class="nm">Stage 8 · Anti-Rollback</div><div class="ds">Strict dotted-version policy — version must be ≥ minimum allowed</div></div><span class="ms">~1ms</span></div>
+<div class="st in"><span class="tg ti">INFO</span><div><div class="nm">Stage 9 · PQC Key Registration</div><div class="ds"><code>ML-DSA-65</code> post-quantum key registered — informational only</div></div><span class="ms">async</span></div>
+<div class="st in"><span class="tg ti">INFO</span><div><div class="nm">Stage 10 · Transparency Log</div><div class="ds">Merkle proof appended to append-only transparency log</div></div><span class="ms">async</span></div>
+<div class="st in"><span class="tg ti">INFO</span><div><div class="nm">Stage 11 · Anomaly + Risk</div><div class="ds">AI risk scoring of boot telemetry — never blocks boot</div></div><span class="ms">async</span></div>
+</div>
+<div class="dec">All blocking stages (1–8) passed?</div>
+<div class="out"><div class="ok">✓ BOOT ALLOWED</div><div class="no">✗ BOOT BLOCKED</div></div>
+<div class="card"><h2>FAILURE REASONS — logged to audit trail before halt</h2><ul class="fl">
+<li>Stage 2 — PUF reconstruction failed / enrollment credential mismatch</li>
+<li>Stage 3 — binding hash mismatch → suspected <code>clone</code></li>
+<li>Stage 4 — untrusted CA / expired / malformed certificate chain</li>
+<li>Stage 5 — invalid signature or replayed (already-consumed) nonce</li>
+<li>Stage 6 — firmware <code>SHA-256</code> digest mismatch (tampering)</li>
+<li>Stage 7 — missing/invalid device or manufacturer signature</li>
+<li>Stage 8 — firmware version below anti-rollback minimum</li>
+</ul></div>
+<div class="card"><h2>BLOCKING-STAGE TIMING (cumulative ≈ 27ms)</h2>
+<div class="tr"><span>S1 SRAM PUF Measure</span><i style="width:37%;background:#3b82f6"></i><b>3ms</b></div>
+<div class="tr"><span>S2 PUF Reconstruction</span><i style="width:62%;background:#3b82f6"></i><b>5ms</b></div>
+<div class="tr"><span>S3 PUF-PKI Binding</span><i style="width:25%;background:#3b82f6"></i><b>2ms</b></div>
+<div class="tr"><span>S4 Cert Chain</span><i style="width:50%;background:#3b82f6"></i><b>4ms</b></div>
+<div class="tr"><span>S5 Challenge-Response</span><i style="width:100%;background:#ef4444"></i><b>8ms</b></div>
+<div class="tr"><span>S6 FW SHA-256</span><i style="width:12%;background:#3b82f6"></i><b>1ms</b></div>
+<div class="tr"><span>S7 FW Signature</span><i style="width:37%;background:#3b82f6"></i><b>3ms</b></div>
+<div class="tr"><span>S8 Anti-Rollback</span><i style="width:12%;background:#3b82f6"></i><b>1ms</b></div>
+</div>
+<div class="nt">NOTE: Any blocking failure (Stages 1–8) terminates boot immediately — informational stages (9–11) never gate boot.</div>
+</div>
+</body>
+</html>

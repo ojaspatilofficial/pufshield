@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#F6F8FB">
+  <meta name="description" content="PUFShield system architecture — a layered security architecture from physical hardware to boot decision.">
+  <title>Architecture | PUFShield Hardware Security Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/static/css/public.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-brand">
+        <svg viewBox="0 0 32 32" width="28" height="28"><path d="M16 3 27 8v7c0 7.4-4.8 12.2-11 14C9.8 27.2 5 22.4 5 15V8z" fill="none" stroke="#16A36A" stroke-width="2"/><path d="M12 16l3 3 5-6" fill="none" stroke="#2F80ED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="nav-brand-text"><div class="nav-brand-name">PUFShield</div><div class="nav-brand-sub">Hardware Security Platform</div></div>
+      </a>
+      <div class="nav-links" id="nav-links">
+        <a href="/about">About</a><a href="/features">Features</a><a href="/how-it-works">How It Works</a><a href="/architecture" class="active">Architecture</a><a href="/demo">Demo</a>
+      </div>
+      <div class="nav-actions"><a href="/login" class="nav-btn nav-btn-ghost">Login</a><a href="/login?redirect=/dashboard" class="nav-btn nav-btn-primary" id="open-console-btn">Open Console</a></div>
+      <button class="nav-mobile-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="section" style="padding-top:140px;padding-bottom:80px;background:linear-gradient(180deg, var(--white) 0%, var(--bg) 100%) !important;">
+    <div class="container text-center animate-on-scroll">
+      <h2 style="font-size:2.75rem;margin-bottom:16px;">System Architecture</h2>
+      <p style="font-size:1.3rem;color:var(--accent-blue) !important;font-weight:600;margin-bottom:20px;">A layered security architecture from physical hardware to boot decision.</p>
+      <p style="max-width:720px;margin:0 auto;font-size:1.05rem;line-height:1.8;">Every verification stage builds on the one before it, forming a defense-in-depth chain that no single compromise can defeat.</p>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE DIAGRAM -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="text-center animate-on-scroll">
+        <h2>PUFShield Architecture</h2>
+        <p style="max-width:640px;margin:16px auto 0;">Visual overview of the verification pipeline from device hardware through cryptographic validation to the final boot decision.</p>
+      </div>
+
+      <div class="arch-diagram animate-on-scroll" style="margin-top:48px;max-width:960px;margin-left:auto;margin-right:auto;">
+
+        <!-- Two columns: Device Layer + Security Layer -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:0;">
+
+          <!-- LEFT: Device Layer -->
+          <div class="arch-layer" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:16px;padding:28px 24px;">
+            <div style="font-weight:700;font-size:1rem;color:var(--navy) !important;margin-bottom:16px;text-align:center;">Device Layer</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div class="arch-node" style="background:rgba(47,128,237,0.06) !important;border:1px solid rgba(47,128,237,0.15);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(47,128,237,0.1);color:var(--accent-blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--navy) !important;">SRAM PUF</div>
+                  <div style="font-size:0.78rem;color:var(--muted);">Unclonable silicon fingerprint</div>
+                </div>
+              </div>
+              <div class="arch-node" style="background:rgba(22,163,106,0.06) !important;border:1px solid rgba(22,163,106,0.15);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(22,163,106,0.1);color:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v12M7 4v10M13 6v8M4 8v6M16 7v7M1 9v5M19 8v6"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--navy) !important;">Environmental Sensors</div>
+                  <div style="font-size:0.78rem;color:var(--muted);">Temperature, voltage, EM interference</div>
+                </div>
+              </div>
+              <div class="arch-node" style="background:rgba(245,158,11,0.06) !important;border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(245,158,11,0.1);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--navy) !important;">Physical Characteristics</div>
+                  <div style="font-size:0.78rem;color:var(--muted);">Manufacturing variation patterns</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: Security Layer -->
+          <div class="arch-layer" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:16px;padding:28px 24px;">
+            <div style="font-weight:700;font-size:1rem;color:var(--navy) !important;margin-bottom:16px;text-align:center;">Security Layer</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div class="arch-node" style="background:rgba(18,59,109,0.06) !important;border:1px solid rgba(18,59,109,0.15);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(18,59,109,0.1);color:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--navy) !important;">PKI / X.509 Certificates</div>
+                  <div style="font-size:0.78rem;color:var(--muted);">Verifiable device identity chain</div>
+                </div>
+              </div>
+              <div class="arch-node" style="background:rgba(245,158,11,0.06) !important;border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(245,158,11,0.1);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--navy) !important;">ML-DSA-65 (PQC)</div>
+                  <div style="font-size:0.78rem;color:var(--muted);">Post-quantum lattice signatures</div>
+                </div>
+              </div>
+              <div class="arch-node" style="background:rgba(47,128,237,0.06) !important;border:1px solid rgba(47,128,237,0.15);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(47,128,237,0.1);color:var(--accent-blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--navy) !important;">Schnorr ZKP</div>
+                  <div style="font-size:0.78rem;color:var(--muted);">Privacy-preserving attestation</div>
+                </div>
+              </div>
+              <div class="arch-node" style="background:rgba(22,163,106,0.06) !important;border:1px solid rgba(22,163,106,0.15);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(22,163,106,0.1);color:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--navy) !important;">Transparency Log (Merkle)</div>
+                  <div style="font-size:0.78rem;color:var(--muted);">Immutable firmware publication record</div>
+                </div>
+              </div>
+              <div class="arch-node" style="background:rgba(18,59,109,0.06) !important;border:1px solid rgba(18,59,109,0.15);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(18,59,109,0.1);color:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--navy) !important;">AI Anomaly Detection</div>
+                  <div style="font-size:0.78rem;color:var(--muted);">Behavioral tamper monitoring</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Connector from columns to pipeline -->
+        <div style="display:flex;justify-content:center;margin:0;">
+          <div style="width:2px;height:28px;background:var(--border-light);"></div>
+        </div>
+
+        <!-- Pipeline: Verification Engine → Risk Assessment → Secure Boot Decision -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+          <div class="arch-node" style="width:320px;max-width:100%;background:var(--white) !important;border:2px solid rgba(47,128,237,0.3);border-radius:12px;padding:18px 20px;text-align:center;">
+            <div style="font-weight:700;font-size:1rem;color:var(--accent-blue) !important;">Verification Engine</div>
+            <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;">Aggregates all cryptographic and physical signals</div>
+          </div>
+          <div style="width:2px;height:24px;background:var(--border-light);"></div>
+          <div class="arch-node" style="width:320px;max-width:100%;background:var(--white) !important;border:2px solid rgba(245,158,11,0.3);border-radius:12px;padding:18px 20px;text-align:center;">
+            <div style="font-weight:700;font-size:1rem;color:var(--amber) !important;">Risk Assessment Engine</div>
+            <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;">7-layer composite risk scoring</div>
+          </div>
+          <div style="width:2px;height:24px;background:var(--border-light);"></div>
+          <div class="arch-node" style="width:320px;max-width:100%;background:rgba(22,163,106,0.06) !important;border:2px solid rgba(22,163,106,0.3);border-radius:12px;padding:18px 20px;text-align:center;">
+            <div style="font-weight:700;font-size:1rem;color:var(--green) !important;">Secure Boot Decision</div>
+            <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;">Allow or deny with full explanation</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- LAYER EXPLANATIONS -->
+  <section class="section">
+    <div class="container">
+      <div class="text-center animate-on-scroll">
+        <h2>Architecture Layers</h2>
+        <p style="max-width:640px;margin:16px auto 0;">Five distinct layers of verification, each building on the previous to create a complete defense-in-depth architecture.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-top:48px;">
+
+        <div class="arch-explain-card animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-left:4px solid var(--accent-blue);border-radius:12px;padding:24px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(47,128,237,0.08);color:var(--accent-blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div style="font-weight:700;font-size:1.05rem;color:var(--navy) !important;">Device Layer</div>
+          </div>
+          <p style="font-size:0.92rem;line-height:1.7;margin:0;color:var(--text) !important;">The physical hardware foundation. SRAM PUF provides an unclonable device fingerprint derived from silicon manufacturing variations.</p>
+        </div>
+
+        <div class="arch-explain-card animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-left:4px solid var(--navy);border-radius:12px;padding:24px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(18,59,109,0.08);color:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </div>
+            <div style="font-weight:700;font-size:1.05rem;color:var(--navy) !important;">Cryptographic Layer</div>
+          </div>
+          <p style="font-size:0.92rem;line-height:1.7;margin:0;color:var(--text) !important;">PKI with X.509 certificates establishes verifiable device identity. ML-DSA-65 provides post-quantum resistance. Schnorr ZKP enables privacy-preserving attestation.</p>
+        </div>
+
+        <div class="arch-explain-card animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-left:4px solid var(--green);border-radius:12px;padding:24px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(22,163,106,0.08);color:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+            </div>
+            <div style="font-weight:700;font-size:1.05rem;color:var(--navy) !important;">AI Layer</div>
+          </div>
+          <p style="font-size:0.92rem;line-height:1.7;margin:0;color:var(--text) !important;">Machine learning anomaly detection monitors environmental conditions, boot behavior patterns, and physical characteristics to identify potential tampering.</p>
+        </div>
+
+        <div class="arch-explain-card animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-left:4px solid var(--amber);border-radius:12px;padding:24px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,0.08);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div style="font-weight:700;font-size:1.05rem;color:var(--navy) !important;">Transparency Layer</div>
+          </div>
+          <p style="font-size:0.92rem;line-height:1.7;margin:0;color:var(--text) !important;">A Merkle tree transparency log provides cryptographic proof of firmware publication history. Every firmware release is recorded and verifiable.</p>
+        </div>
+
+        <div class="arch-explain-card animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-left:4px solid var(--accent-blue);border-radius:12px;padding:24px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(47,128,237,0.08);color:var(--accent-blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>
+            </div>
+            <div style="font-weight:700;font-size:1.05rem;color:var(--navy) !important;">Decision Layer</div>
+          </div>
+          <p style="font-size:0.92rem;line-height:1.7;margin:0;color:var(--text) !important;">The risk engine aggregates all verification signals and produces a final boot decision with detailed explanations for each stage.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- TECHNOLOGY MAP -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="text-center animate-on-scroll">
+        <h2>Implementation Details</h2>
+        <p style="max-width:640px;margin:16px auto 0;">Actual backend modules and algorithms powering each architectural layer.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:48px;max-width:1060px;margin-left:auto;margin-right:auto;">
+
+        <div class="animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(47,128,237,0.08);color:var(--accent-blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--navy) !important;">Device Layer</div>
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--accent-blue) !important;margin:4px 0;">app/ai/environment.py</div>
+            <div style="font-size:0.82rem;color:var(--muted);">SRAM PUF Simulator</div>
+          </div>
+        </div>
+
+        <div class="animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(22,163,106,0.08);color:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,17 10,11 4,5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--navy) !important;">PUF Processing</div>
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--green) !important;margin:4px 0;">app/services.py</div>
+            <div style="font-size:0.82rem;color:var(--muted);">Fuzzy Extraction + HKDF</div>
+          </div>
+        </div>
+
+        <div class="animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(18,59,109,0.08);color:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--navy) !important;">PKI</div>
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--navy) !important;margin:4px 0;">app/pki/</div>
+            <div style="font-size:0.82rem;color:var(--muted);">ECDSA P-256, X.509 Certificates</div>
+          </div>
+        </div>
+
+        <div class="animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,0.08);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--navy) !important;">PQC</div>
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--amber) !important;margin:4px 0;">app/pqcrypto/mldsa.py</div>
+            <div style="font-size:0.82rem;color:var(--muted);">ML-DSA-65 Pure Python</div>
+          </div>
+        </div>
+
+        <div class="animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(47,128,237,0.08);color:var(--accent-blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--navy) !important;">ZKP</div>
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--accent-blue) !important;margin:4px 0;">app/zkp/schnorr.py</div>
+            <div style="font-size:0.82rem;color:var(--muted);">Schnorr Protocol</div>
+          </div>
+        </div>
+
+        <div class="animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(22,163,106,0.08);color:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--navy) !important;">Transparency</div>
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--green) !important;margin:4px 0;">app/transparency/</div>
+            <div style="font-size:0.82rem;color:var(--muted);">Merkle Tree + Log</div>
+          </div>
+        </div>
+
+        <div class="animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(18,59,109,0.08);color:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--navy) !important;">AI Detection</div>
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--navy) !important;margin:4px 0;">app/ai/anomaly.py</div>
+            <div style="font-size:0.82rem;color:var(--muted);">Anomaly Scoring</div>
+          </div>
+        </div>
+
+        <div class="animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,0.08);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--navy) !important;">Risk Engine</div>
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--amber) !important;margin:4px 0;">app/risk/engine.py</div>
+            <div style="font-size:0.82rem;color:var(--muted);">7-Layer Assessment</div>
+          </div>
+        </div>
+
+        <div class="animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(47,128,237,0.08);color:var(--accent-blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--navy) !important;">Secure Boot</div>
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--accent-blue) !important;margin:4px 0;">app/secureboot/verify.py</div>
+            <div style="font-size:0.82rem;color:var(--muted);">11-Stage Pipeline</div>
+          </div>
+        </div>
+
+        <div class="animate-on-scroll" style="background:var(--white) !important;border:1px solid var(--border-light);border-radius:12px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(22,163,106,0.08);color:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 1 12 7h6l-5 4 2 6-5-3.5L5 17l2-6-5-4h6z"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--navy) !important;">Attack Simulation</div>
+            <div style="font-family:monospace;font-size:0.78rem;color:var(--green) !important;margin:4px 0;">app/attacks/attacks.py</div>
+            <div style="font-size:0.82rem;color:var(--muted);">12 Attack Types</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA SECTION -->
+  <section class="cta-section">
+    <div class="cta-content">
+      <h2 class="cta-title">Ready to inspect the security architecture?</h2>
+      <p class="cta-subtitle">Explore the platform or run an interactive security demo.</p>
+      <div class="cta-actions">
+        <a href="/features" class="hero-btn hero-btn-primary">Explore the Platform</a>
+        <a href="/demo" class="hero-btn hero-btn-secondary">Run Interactive Demo</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="/" class="nav-brand" style="margin-bottom:12px;display:inline-flex;">
+          <svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 2L4 9V17.5C4 26.04 9.88 33.98 18 36C26.12 33.98 32 26.04 32 17.5V9L18 2Z" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+            <path d="M18 10L11 13.5V19C11 23.7 13.88 28.08 18 29.5C22.12 28.08 25 23.7 25 19V13.5L18 10Z" fill="white" opacity="0.9"/>
+            <path d="M15.5 19L17.5 21L21.5 16" stroke="#123B6D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="nav-brand-name" style="color:#fff !important;">PUFShield</span>
+        </a>
+        <p class="footer-brand-tagline">Hardware-rooted secure boot and device authentication platform for the post-quantum era.</p>
+      </div>
+      <div class="footer-columns">
+        <div class="footer-col">
+          <div class="footer-col-title">Platform</div>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/dashboard#digital-twin">Digital Twin</a>
+          <a href="/demo#secure-boot">Secure Boot</a>
+          <a href="/demo#attack-center">Attack Center</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Security</div>
+          <a href="/features#sram-puf">SRAM PUF</a>
+          <a href="/features#pki">PKI</a>
+          <a href="/features#pqc">PQC</a>
+          <a href="/features#zkp">ZKP</a>
+          <a href="/features#transparency">Transparency</a>
+          <a href="/features#ai-detection">AI Detection</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Resources</div>
+          <a href="/about">About</a>
+          <a href="/how-it-works">How It Works</a>
+          <a href="/architecture">Architecture</a>
+          <a href="/demo">Demo</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Project</div>
+          <a href="https://github.com/pufshield/docs">Documentation</a>
+          <a href="/about#technology">Technology</a>
+          <a href="/architecture#security">Security Architecture</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div class="footer-bottom-text">&copy; 2026 PUFShield</div>
+        <div class="footer-bottom-divider"></div>
+        <div class="footer-bottom-text">Hardware Security &bull; Cryptographic Trust &bull; Secure Boot</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/js/public.js"></script>
+</body>
+</html>

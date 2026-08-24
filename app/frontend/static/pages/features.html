@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#F6F8FB">
+  <meta name="description" content="PUFShield features — SRAM PUF, post-quantum cryptography, zero-knowledge proofs, AI tamper detection, firmware transparency, and secure boot.">
+  <title>Features | PUFShield Hardware Security Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/static/css/public.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-brand">
+        <svg viewBox="0 0 32 32" width="28" height="28"><path d="M16 3 27 8v7c0 7.4-4.8 12.2-11 14C9.8 27.2 5 22.4 5 15V8z" fill="none" stroke="#16A36A" stroke-width="2"/><path d="M12 16l3 3 5-6" fill="none" stroke="#2F80ED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="nav-brand-text"><div class="nav-brand-name">PUFShield</div><div class="nav-brand-sub">Hardware Security Platform</div></div>
+      </a>
+      <div class="nav-links" id="nav-links">
+        <a href="/about">About</a><a href="/features" class="active">Features</a><a href="/how-it-works">How It Works</a><a href="/architecture">Architecture</a><a href="/demo">Demo</a>
+      </div>
+      <div class="nav-actions"><a href="/login" class="nav-btn nav-btn-ghost">Login</a><a href="/login?redirect=/dashboard" class="nav-btn nav-btn-primary" id="open-console-btn">Open Console</a></div>
+      <button class="nav-mobile-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <section class="section" style="padding-top:140px;padding-bottom:80px;background:linear-gradient(180deg, var(--white) 0%, var(--bg) 100%) !important;">
+    <div class="container text-center animate-on-scroll">
+      <h2 style="font-size:2.75rem;margin-bottom:16px;">Security From Silicon to Software</h2>
+      <p style="max-width:720px;margin:0 auto;font-size:1.15rem;line-height:1.8;">Every layer of PUFShield's architecture is designed to verify, protect, and detect.</p>
+    </div>
+  </section>
+
+  <!-- FEATURES GRID -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="features-grid">
+
+        <!-- 01 — SRAM PUF -->
+        <div class="feature-card animate-on-scroll" id="sram-puf">
+          <div class="feature-card-number">01</div>
+          <div class="feature-card-icon" style="background:rgba(47,128,237,0.08);color:var(--accent-blue);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="feature-card-title">SRAM PUF</div>
+          <div class="feature-card-desc">Hardware-derived device identity</div>
+          <div class="feature-card-detail">SRAM startup behavior creates a unique, unclonable physical fingerprint for each device. This silicon-level identity forms the root of trust for all subsequent verification.</div>
+        </div>
+
+        <!-- 02 — Error Correction -->
+        <div class="feature-card animate-on-scroll" id="error-correction">
+          <div class="feature-card-number">02</div>
+          <div class="feature-card-icon" style="background:rgba(22,163,106,0.08);color:var(--green);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,17 10,11 4,5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
+          <div class="feature-card-title">Error Correction</div>
+          <div class="feature-card-desc">Reliable cryptographic material from noisy hardware</div>
+          <div class="feature-card-detail">Fuzzy extraction and error correction convert noisy physical PUF responses into stable, reproducible cryptographic credentials.</div>
+        </div>
+
+        <!-- 03 — PKI -->
+        <div class="feature-card animate-on-scroll" id="pki">
+          <div class="feature-card-number">03</div>
+          <div class="feature-card-icon" style="background:rgba(18,59,109,0.08);color:var(--navy);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          </div>
+          <div class="feature-card-title">PKI / Certificates</div>
+          <div class="feature-card-desc">Cryptographically verifiable device identity</div>
+          <div class="feature-card-detail">Each device receives an X.509 certificate signed by the manufacturer's CA, establishing a verifiable chain of trust.</div>
+        </div>
+
+        <!-- 04 — Post-Quantum Cryptography -->
+        <div class="feature-card animate-on-scroll" id="pqc">
+          <div class="feature-card-number">04</div>
+          <div class="feature-card-icon" style="background:rgba(245,158,11,0.08);color:var(--amber);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+          </div>
+          <div class="feature-card-title">Post-Quantum Cryptography</div>
+          <div class="feature-card-desc">ML-DSA-65 lattice-based signatures</div>
+          <div class="feature-card-detail">NIST FIPS 204 ML-DSA-65 provides quantum-resistant firmware verification using pure Python lattice-based cryptography.</div>
+        </div>
+
+        <!-- 05 — Zero-Knowledge Attestation -->
+        <div class="feature-card animate-on-scroll" id="zkp">
+          <div class="feature-card-number">05</div>
+          <div class="feature-card-icon" style="background:rgba(47,128,237,0.08);color:var(--accent-blue);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <div class="feature-card-title">Zero-Knowledge Attestation</div>
+          <div class="feature-card-desc">Prove authenticity without exposing secrets</div>
+          <div class="feature-card-detail">Schnorr protocol zero-knowledge proofs allow devices to prove possession of valid credentials without revealing private key material.</div>
+        </div>
+
+        <!-- 06 — AI Tamper Detection -->
+        <div class="feature-card animate-on-scroll" id="ai-detection">
+          <div class="feature-card-number">06</div>
+          <div class="feature-card-icon" style="background:rgba(22,163,106,0.08);color:var(--green);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+          </div>
+          <div class="feature-card-title">AI Tamper Detection</div>
+          <div class="feature-card-desc">Detect abnormal physical behavior</div>
+          <div class="feature-card-detail">Machine learning anomaly detection monitors environmental conditions, boot behavior, and physical characteristics to identify tampering.</div>
+        </div>
+
+        <!-- 07 — Firmware Transparency -->
+        <div class="feature-card animate-on-scroll" id="transparency">
+          <div class="feature-card-number">07</div>
+          <div class="feature-card-icon" style="background:rgba(18,59,109,0.08);color:var(--navy);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="feature-card-title">Firmware Transparency</div>
+          <div class="feature-card-desc">Cryptographic proof of firmware publication</div>
+          <div class="feature-card-detail">A Merkle tree transparency log records every firmware publication, allowing anyone to verify that firmware was officially released.</div>
+        </div>
+
+        <!-- 08 — Merkle Tree -->
+        <div class="feature-card animate-on-scroll" id="merkle-tree">
+          <div class="feature-card-number">08</div>
+          <div class="feature-card-icon" style="background:rgba(47,128,237,0.08);color:var(--accent-blue);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <div class="feature-card-title">Merkle Tree Verification</div>
+          <div class="feature-card-desc">Inclusion and consistency proofs</div>
+          <div class="feature-card-detail">The Merkle hash tree provides cryptographic proof that specific firmware entries exist in the transparency log and have not been modified.</div>
+        </div>
+
+        <!-- 09 — Anti-Rollback -->
+        <div class="feature-card animate-on-scroll" id="anti-rollback">
+          <div class="feature-card-number">09</div>
+          <div class="feature-card-icon" style="background:rgba(245,158,11,0.08);color:var(--amber);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><line x1="12" y1="15" x2="12" y2="18"/></svg>
+          </div>
+          <div class="feature-card-title">Anti-Rollback Protection</div>
+          <div class="feature-card-desc">Prevent unauthorized firmware downgrade</div>
+          <div class="feature-card-detail">Version floor enforcement prevents devices from booting older, potentially vulnerable firmware versions.</div>
+        </div>
+
+        <!-- 10 — Secure Boot -->
+        <div class="feature-card animate-on-scroll" id="secure-boot">
+          <div class="feature-card-number">10</div>
+          <div class="feature-card-icon" style="background:rgba(22,163,106,0.08);color:var(--green);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+          </div>
+          <div class="feature-card-title">Secure Boot Pipeline</div>
+          <div class="feature-card-desc">11-stage verification from hardware to decision</div>
+          <div class="feature-card-detail">Every boot goes through an 11-stage verification pipeline combining PUF, PKI, firmware integrity, PQC, transparency, AI detection, and risk assessment.</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA SECTION -->
+  <section class="cta-section">
+    <div class="cta-content">
+      <h2 class="cta-title">Ready to inspect the security architecture?</h2>
+      <p class="cta-subtitle">Explore the platform or run an interactive security demo.</p>
+      <div class="cta-actions">
+        <a href="/features" class="hero-btn hero-btn-primary">Explore the Platform</a>
+        <a href="/demo" class="hero-btn hero-btn-secondary">Run Interactive Demo</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="/" class="nav-brand" style="margin-bottom:12px;display:inline-flex;">
+          <svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 2L4 9V17.5C4 26.04 9.88 33.98 18 36C26.12 33.98 32 26.04 32 17.5V9L18 2Z" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+            <path d="M18 10L11 13.5V19C11 23.7 13.88 28.08 18 29.5C22.12 28.08 25 23.7 25 19V13.5L18 10Z" fill="white" opacity="0.9"/>
+            <path d="M15.5 19L17.5 21L21.5 16" stroke="#123B6D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="nav-brand-name" style="color:#fff !important;">PUFShield</span>
+        </a>
+        <p class="footer-brand-tagline">Hardware-rooted secure boot and device authentication platform for the post-quantum era.</p>
+      </div>
+      <div class="footer-columns">
+        <div class="footer-col">
+          <div class="footer-col-title">Platform</div>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/dashboard#digital-twin">Digital Twin</a>
+          <a href="/demo#secure-boot">Secure Boot</a>
+          <a href="/demo#attack-center">Attack Center</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Security</div>
+          <a href="/features#sram-puf">SRAM PUF</a>
+          <a href="/features#pki">PKI</a>
+          <a href="/features#pqc">PQC</a>
+          <a href="/features#zkp">ZKP</a>
+          <a href="/features#transparency">Transparency</a>
+          <a href="/features#ai-detection">AI Detection</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Resources</div>
+          <a href="/about">About</a>
+          <a href="/how-it-works">How It Works</a>
+          <a href="/architecture">Architecture</a>
+          <a href="/demo">Demo</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Project</div>
+          <a href="https://github.com/pufshield/docs">Documentation</a>
+          <a href="/about#technology">Technology</a>
+          <a href="/architecture#security">Security Architecture</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div class="footer-bottom-text">&copy; 2026 PUFShield</div>
+        <div class="footer-bottom-divider"></div>
+        <div class="footer-bottom-text">Hardware Security &bull; Cryptographic Trust &bull; Secure Boot</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/js/public.js"></script>
+</body>
+</html>

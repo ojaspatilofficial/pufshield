@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#F6F8FB">
+  <meta name="description" content="How PUFShield works — a step-by-step journey from hardware power-on to secure boot decision.">
+  <title>How It Works | PUFShield Hardware Security Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/static/css/public.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-brand">
+        <svg viewBox="0 0 32 32" width="28" height="28"><path d="M16 3 27 8v7c0 7.4-4.8 12.2-11 14C9.8 27.2 5 22.4 5 15V8z" fill="none" stroke="#16A36A" stroke-width="2"/><path d="M12 16l3 3 5-6" fill="none" stroke="#2F80ED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="nav-brand-text"><div class="nav-brand-name">PUFShield</div><div class="nav-brand-sub">Hardware Security Platform</div></div>
+      </a>
+      <div class="nav-links" id="nav-links">
+        <a href="/about">About</a><a href="/features">Features</a><a href="/how-it-works" class="active">How It Works</a><a href="/architecture">Architecture</a><a href="/demo">Demo</a>
+      </div>
+      <div class="nav-actions"><a href="/login" class="nav-btn nav-btn-ghost">Login</a><a href="/login?redirect=/dashboard" class="nav-btn nav-btn-primary" id="open-console-btn">Open Console</a></div>
+      <button class="nav-mobile-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <section class="section" style="padding-top:140px;padding-bottom:80px;background:linear-gradient(180deg, var(--white) 0%, var(--bg) 100%) !important;">
+    <div class="container text-center animate-on-scroll">
+      <h2 style="font-size:2.75rem;margin-bottom:16px;">How PUFShield Establishes Trust</h2>
+      <p style="font-size:1.3rem;color:var(--accent-blue) !important;font-weight:600;margin-bottom:20px;">A step-by-step journey from hardware power-on to secure boot decision.</p>
+      <p style="max-width:720px;margin:0 auto;font-size:1.05rem;line-height:1.8;">Every boot cycle passes through 11 verification stages, each building on the last to establish verifiable trust from silicon to software.</p>
+    </div>
+  </section>
+
+  <!-- 11 STEPS SECTION -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="text-center animate-on-scroll">
+        <h2>The 11-Stage Verification Pipeline</h2>
+        <p style="max-width:640px;margin:16px auto 0;">Each stage must pass before the device is allowed to complete its boot sequence.</p>
+      </div>
+      <div class="steps-container" style="margin-top:48px;">
+
+        <!-- Step 1 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Device Power On</div>
+            <div class="step-desc">The device begins the boot process. Power rails stabilize and the processor initializes.</div>
+          </div>
+        </div>
+        <div class="step-connector"><div class="step-connector-line"></div><div class="step-connector-dot"></div></div>
+
+        <!-- Step 2 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">SRAM PUF Read</div>
+            <div class="step-desc">The hardware SRAM startup pattern is captured, creating a unique physical fingerprint for this specific device.</div>
+          </div>
+        </div>
+        <div class="step-connector"><div class="step-connector-line"></div><div class="step-connector-dot"></div></div>
+
+        <!-- Step 3 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">Error Correction</div>
+            <div class="step-desc">Noise in the physical PUF response is corrected using fuzzy extraction to recover a stable cryptographic credential.</div>
+          </div>
+        </div>
+        <div class="step-connector"><div class="step-connector-line"></div><div class="step-connector-dot"></div></div>
+
+        <!-- Step 4 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <div class="step-title">Device Identity</div>
+            <div class="step-desc">The corrected PUF response is used to derive the device's unique cryptographic identity via HKDF key derivation.</div>
+          </div>
+        </div>
+        <div class="step-connector"><div class="step-connector-line"></div><div class="step-connector-dot"></div></div>
+
+        <!-- Step 5 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">5</div>
+          <div class="step-content">
+            <div class="step-title">Certificate Verification</div>
+            <div class="step-desc">The device's X.509 certificate is verified against the manufacturer's root CA, establishing a trusted identity chain.</div>
+          </div>
+        </div>
+        <div class="step-connector"><div class="step-connector-line"></div><div class="step-connector-dot"></div></div>
+
+        <!-- Step 6 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">6</div>
+          <div class="step-content">
+            <div class="step-title">Challenge-Response</div>
+            <div class="step-desc">A one-time cryptographic challenge verifies the device possesses its registered private key without replay risk.</div>
+          </div>
+        </div>
+        <div class="step-connector"><div class="step-connector-line"></div><div class="step-connector-dot"></div></div>
+
+        <!-- Step 7 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">7</div>
+          <div class="step-content">
+            <div class="step-title">Firmware Integrity</div>
+            <div class="step-desc">The firmware payload's SHA-256 hash is verified against the expected value to detect any tampering.</div>
+          </div>
+        </div>
+        <div class="step-connector"><div class="step-connector-line"></div><div class="step-connector-dot"></div></div>
+
+        <!-- Step 8 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">8</div>
+          <div class="step-content">
+            <div class="step-title">Post-Quantum Verification</div>
+            <div class="step-desc">ML-DSA-65 lattice-based signature verification provides quantum-resistant firmware authentication.</div>
+          </div>
+        </div>
+        <div class="step-connector"><div class="step-connector-line"></div><div class="step-connector-dot"></div></div>
+
+        <!-- Step 9 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">9</div>
+          <div class="step-content">
+            <div class="step-title">Transparency Check</div>
+            <div class="step-desc">The firmware's existence in the Merkle tree transparency log is verified, confirming official publication.</div>
+          </div>
+        </div>
+        <div class="step-connector"><div class="step-connector-line"></div><div class="step-connector-dot"></div></div>
+
+        <!-- Step 10 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">10</div>
+          <div class="step-content">
+            <div class="step-title">AI Anomaly Detection</div>
+            <div class="step-desc">Environmental and behavioral sensors are analyzed for signs of physical tampering or abnormal conditions.</div>
+          </div>
+        </div>
+        <div class="step-connector"><div class="step-connector-line"></div><div class="step-connector-dot"></div></div>
+
+        <!-- Step 11 -->
+        <div class="step animate-on-scroll">
+          <div class="step-number">11</div>
+          <div class="step-content">
+            <div class="step-title">Boot Decision</div>
+            <div class="step-desc">All verification results are aggregated by the risk engine. Boot is ALLOWED if all mandatory checks pass, or BLOCKED with specific failure details.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- BOOT DECISION EXPLANATION -->
+  <section class="section">
+    <div class="container">
+      <div class="text-center animate-on-scroll">
+        <h2>The Final Decision</h2>
+        <p style="max-width:640px;margin:16px auto 0;">Every boot concludes with a binary decision based on the results of all 11 verification stages.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:24px;margin-top:48px;max-width:960px;margin-left:auto;margin-right:auto;">
+
+        <!-- ALLOWED -->
+        <div class="problem-card animate-on-scroll" style="border-left-color:var(--green);">
+          <div class="problem-card-icon" style="background:rgba(22,163,106,0.08);color:var(--green);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
+          </div>
+          <div class="problem-card-title" style="color:var(--green) !important;">ALLOWED</div>
+          <div class="problem-card-desc">All 11 stages pass &rarr; device identity is verified, firmware is authentic, no tampering detected &rarr; boot proceeds.</div>
+        </div>
+
+        <!-- BLOCKED -->
+        <div class="problem-card animate-on-scroll" style="border-left-color:var(--red);">
+          <div class="problem-card-icon" style="background:rgba(220,53,69,0.08);color:var(--red);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
+          <div class="problem-card-title" style="color:var(--red) !important;">BLOCKED</div>
+          <div class="problem-card-desc">Any mandatory stage fails &rarr; specific failure point identified &rarr; boot halted with detailed explanation.</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA SECTION -->
+  <section class="cta-section">
+    <div class="cta-content">
+      <h2 class="cta-title">Ready to inspect the security architecture?</h2>
+      <p class="cta-subtitle">Explore the platform or run an interactive security demo.</p>
+      <div class="cta-actions">
+        <a href="/features" class="hero-btn hero-btn-primary">Explore the Platform</a>
+        <a href="/demo" class="hero-btn hero-btn-secondary">Run Interactive Demo</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="/" class="nav-brand" style="margin-bottom:12px;display:inline-flex;">
+          <svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 2L4 9V17.5C4 26.04 9.88 33.98 18 36C26.12 33.98 32 26.04 32 17.5V9L18 2Z" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+            <path d="M18 10L11 13.5V19C11 23.7 13.88 28.08 18 29.5C22.12 28.08 25 23.7 25 19V13.5L18 10Z" fill="white" opacity="0.9"/>
+            <path d="M15.5 19L17.5 21L21.5 16" stroke="#123B6D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="nav-brand-name" style="color:#fff !important;">PUFShield</span>
+        </a>
+        <p class="footer-brand-tagline">Hardware-rooted secure boot and device authentication platform for the post-quantum era.</p>
+      </div>
+      <div class="footer-columns">
+        <div class="footer-col">
+          <div class="footer-col-title">Platform</div>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/dashboard#digital-twin">Digital Twin</a>
+          <a href="/demo#secure-boot">Secure Boot</a>
+          <a href="/demo#attack-center">Attack Center</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Security</div>
+          <a href="/features#sram-puf">SRAM PUF</a>
+          <a href="/features#pki">PKI</a>
+          <a href="/features#pqc">PQC</a>
+          <a href="/features#zkp">ZKP</a>
+          <a href="/features#transparency">Transparency</a>
+          <a href="/features#ai-detection">AI Detection</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Resources</div>
+          <a href="/about">About</a>
+          <a href="/how-it-works">How It Works</a>
+          <a href="/architecture">Architecture</a>
+          <a href="/demo">Demo</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Project</div>
+          <a href="https://github.com/pufshield/docs">Documentation</a>
+          <a href="/about#technology">Technology</a>
+          <a href="/architecture#security">Security Architecture</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div class="footer-bottom-text">&copy; 2026 PUFShield</div>
+        <div class="footer-bottom-divider"></div>
+        <div class="footer-bottom-text">Hardware Security &bull; Cryptographic Trust &bull; Secure Boot</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/js/public.js"></script>
+</body>
+</html>

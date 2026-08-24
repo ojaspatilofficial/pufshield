@@ -138,7 +138,7 @@ function navigate(view, push = true) {
   currentView = view;
   $$(".view").forEach((el) => el.classList.toggle("active", el.id === `view-${view}`));
   $$(".nav-item").forEach((el) => el.classList.toggle("active", el.dataset.view === view));
-  $("#page-title").textContent = VIEWS[view].title;
+  document.title = `${VIEWS[view].title} | PUFShield Security Console`;
   closeSidebar();
   safe(() => VIEWS[view].refresh());
   if (push && location.hash !== `#${view}`) history.replaceState(null, "", `#${view}`);
@@ -154,10 +154,18 @@ function closeSidebar() {
   $("#sidebar").classList.remove("open");
   $("#backdrop").classList.remove("show");
 }
-$("#hamburger").addEventListener("click", () => {
-  $("#sidebar").classList.add("open");
-  $("#backdrop").classList.add("show");
-});
+if ($("#hamburger")) {
+  $("#hamburger").addEventListener("click", () => {
+    $("#sidebar").classList.add("open");
+    $("#backdrop").classList.add("show");
+  });
+}
+if ($("#nav-toggle")) {
+  $("#nav-toggle").addEventListener("click", () => {
+    $("#sidebar").classList.add("open");
+    $("#backdrop").classList.add("show");
+  });
+}
 $("#backdrop").addEventListener("click", closeSidebar);
 $("#refresh-all").addEventListener("click", () => {
   safe(() => VIEWS[currentView].refresh());
@@ -179,7 +187,8 @@ async function updateBackendStatus() {
 }
 
 function tickClock() {
-  $("#clock").textContent = new Date().toLocaleTimeString();
+  const el = $("#clock");
+  if (el) el.textContent = new Date().toLocaleTimeString();
 }
 setInterval(tickClock, 1000);
 setInterval(updateBackendStatus, 5000);
@@ -1466,15 +1475,26 @@ async function runDemo() {
   }
 
   navigate("dashboard");
-  let html = '<div class="card" style="margin-top:18px"><div class="card-head"><h2>Demo Results</h2></div><div class="stage-list">';
+  let html = '<div class="card" id="demo-results-card"><div class="card-head"><h2>Demo Results &mdash; Security Validation Summary</h2></div>';
+  html += '<div class="stage-list">';
   for (const r of results) {
     const blocked = r.result?.decision === "BOOT_BLOCKED";
     const ok = r.result?.decision === "BOOT_ALLOWED";
-    const cls = ok ? "pass" : blocked ? "fail" : "pass";
+    const isAttack = r.scenario.name !== "A";
+    let cls, icon, statusLabel;
+    if (ok) {
+      cls = "pass"; icon = "✓"; statusLabel = "SECURE BOOT ALLOWED";
+    } else if (blocked && isAttack) {
+      cls = "pass"; icon = "✓"; statusLabel = "ATTACK DETECTED &mdash; SECURITY TEST PASSED";
+    } else if (blocked) {
+      cls = "fail"; icon = "✗"; statusLabel = "BOOT BLOCKED";
+    } else {
+      cls = "fail"; icon = "✗"; statusLabel = r.result?.decision || "UNKNOWN";
+    }
     html += `<div class="stage ${cls}">
-      <span class="stage-icon">${ok ? "✓" : "✗"}</span>
+      <span class="stage-icon">${icon}</span>
       <span class="stage-name">[${r.scenario.name}] ${esc(r.scenario.label)}</span>
-      <span class="stage-detail">${esc(r.result?.decision || "—")} — ${esc(r.scenario.desc)}</span>
+      <span class="stage-detail">${statusLabel} &mdash; ${esc(r.scenario.desc)}</span>
     </div>`;
   }
   html += '</div></div>';
@@ -1486,7 +1506,9 @@ async function runDemo() {
   demoRunning = false;
 }
 
-$("#demo-run").addEventListener("click", runDemo);
+if ($("#demo-run")) {
+  $("#demo-run").addEventListener("click", runDemo);
+}
 
 /* ============================================================
    DIGITAL TWIN
@@ -1495,27 +1517,32 @@ $("#demo-run").addEventListener("click", runDemo);
 async function refreshTwin() {
   const id = document.getElementById("twin-device").value.trim();
   if (!id) return;
+  const gridEl = document.getElementById("twin-grid");
+  const statsEl = document.getElementById("twin-stats");
+  gridEl.innerHTML = '<span class="empty">Loading&hellip;</span>';
+  statsEl.textContent = "";
   try {
     const data = await api(`/api/twin/${encodeURIComponent(id)}`);
     const grid = data.sram_grid;
     const size = data.grid_size;
-    let html = "";
+    const cells = [];
     for (let r = 0; r < size; r++) {
-      let row = "";
       for (let c = 0; c < size; c++) {
         const v = grid[r][c];
-        row += v ? "\u2588" : "\u00B7";
+        cells.push(`<span class="cell ${v ? "stable1" : "stable0"}" title="row ${r} col ${c}: ${v}"></span>`);
       }
-      html += row + "\n";
     }
-    document.getElementById("twin-grid").textContent = html;
-    document.getElementById("twin-stats").textContent =
-      `Grid: ${size}\u00D7${size} | Total bits: ${data.total_bits} | ` +
-      `Bit flip rate: ${data.bit_flip_rate.toFixed(4)} | Stability: ${data.stability.toFixed(4)} | ` +
-      `Entropy: ${data.entropy_bits.toFixed(2)} bits | ` +
-      `Conditions: T=${data.conditions.temperature_c}\u00B0C V=${data.conditions.voltage_v}V`;
+    gridEl.style.gridTemplateColumns = `repeat(${size}, 9px)`;
+    gridEl.innerHTML = cells.join("");
+    statsEl.innerHTML = `
+      <span class="badge badge-info">${size}&times;${size} grid</span>
+      <span class="badge badge-accent">${data.total_bits} bits</span>
+      <span class="badge badge-ok">Stability ${(data.stability * 100).toFixed(1)}%</span>
+      <span class="badge badge-neutral">Flip rate ${(data.bit_flip_rate * 100).toFixed(2)}%</span>
+      <span class="badge badge-neutral">Entropy ${data.entropy_bits.toFixed(2)} bits</span>
+      <span class="badge badge-neutral">T=${data.conditions.temperature_c}&deg;C V=${data.conditions.voltage_v}V</span>`;
   } catch (e) {
-    document.getElementById("twin-grid").textContent = "Error: " + e.message;
+    gridEl.innerHTML = `<span class="empty">${esc(e.message)}</span>`;
   }
 }
 
@@ -1530,32 +1557,31 @@ async function refreshBootReport() {
   if (!id) return;
   try {
     const r = await api(`/api/boot/report/${encodeURIComponent(id)}`);
-    let html = "";
-    const icon = r.decision === "BOOT_ALLOWED" ? "\u2705" : "\u26D4";
-    html += `<div style="font-size:16px;margin-bottom:8px">${icon} <b>${esc(r.decision)}</b> &mdash; ${esc(r.message || "")}</div>`;
-    html += `<div style="margin-bottom:12px;color:#8b949e">Stages: ${r.passed_stages || 0}/${r.total_stages || 0} passed | ` +
-            `Duration: ${r.total_duration_ms || 0}ms | Posture: ${r.summary ? esc(r.summary.security_posture || "unknown") : "unknown"}</div>`;
+    const blocked = r.decision === "BOOT_BLOCKED";
+    let html = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="badge ${blocked ? "badge-err" : "badge-ok"}">${esc(r.decision)}</span>
+    </div>`;
+    html += `<div class="muted" style="margin-bottom:12px">Stages: ${r.passed_stages || 0}/${r.total_stages || 0} passed &middot; Duration: ${r.total_duration_ms || 0}ms &middot; Posture: <b>${r.summary ? esc(r.summary.security_posture || "unknown") : "unknown"}</b></div>`;
     if (r.first_failure_point) {
-      html += `<div style="color:#f85149;margin-bottom:8px">\u26A0 First failure: <b>${esc(r.first_failure_point)}</b></div>`;
+      html += `<div style="margin-bottom:8px"><span class="badge badge-err">First failure: ${esc(r.first_failure_point)}</span></div>`;
     }
     if (r.event_chain && r.event_chain.length > 0) {
-      html += "<table style='width:100%;border-collapse:collapse;font-size:12px'>";
-      html += "<tr style='border-bottom:1px solid #30363d;color:#8b949e'><th style='text-align:left;padding:4px'>#</th><th style='text-align:left;padding:4px'>Stage</th><th style='text-align:left;padding:4px'>Result</th><th style='text-align:right;padding:4px'>Time</th><th style='text-align:left;padding:4px'>Details</th></tr>";
+      html += "<div class='table-wrap'><table class='table' style='min-width:auto'>";
+      html += "<thead><tr><th>#</th><th>Stage</th><th>Result</th><th style='text-align:right'>Time</th><th>Details</th></tr></thead><tbody>";
       for (const ev of r.event_chain) {
-        const icon = ev.passed ? "\u2705" : (ev.blocking ? "\u26D4" : "\u26A0");
-        const color = ev.passed ? "#3fb950" : (ev.blocking ? "#f85149" : "#d29922");
-        html += `<tr style="border-bottom:1px solid #21262d">`;
-        html += `<td style="padding:4px;color:#8b949e">${ev.order}</td>`;
-        html += `<td style="padding:4px;color:${color}">${esc(ev.title || ev.stage)}</td>`;
-        html += `<td style="padding:4px;color:${color}">${icon} ${ev.passed ? "PASS" : "FAIL"}</td>`;
-        html += `<td style="padding:4px;text-align:right;color:#8b949e">${ev.duration_ms}ms</td>`;
-        html += `<td style="padding:4px;color:#8b949e;font-size:11px">${esc(ev.description || "")}</td>`;
+        const passBadge = ev.passed ? '<span class="badge badge-ok">PASS</span>' : (ev.blocking ? '<span class="badge badge-err">FAIL</span>' : '<span class="badge badge-warn">WARN</span>');
+        html += `<tr>`;
+        html += `<td class="mono">${ev.order}</td>`;
+        html += `<td class="mono">${esc(ev.title || ev.stage)}</td>`;
+        html += `<td>${passBadge}</td>`;
+        html += `<td class="mono" style="text-align:right">${ev.duration_ms}ms</td>`;
+        html += `<td class="muted">${esc(ev.description || "")}</td>`;
         html += `</tr>`;
         if (ev.reasons && ev.reasons.length > 0) {
-          html += `<tr><td colspan="5" style="padding:0 4px 4px;color:#f85149;font-size:11px">\u2192 ${esc(ev.reasons.join("; "))}</td></tr>`;
+          html += `<tr><td colspan="5" style="padding:2px 12px 8px"><span class="badge badge-err">${esc(ev.reasons.join("; "))}</span></td></tr>`;
         }
       }
-      html += "</table>";
+      html += "</tbody></table></div>";
     }
     document.getElementById("report-content").innerHTML = html;
   } catch (e) {
@@ -1566,6 +1592,48 @@ async function refreshBootReport() {
 $("#report-load").addEventListener("click", () => safe(refreshBootReport));
 
 /* ============================================================
+   LOGOUT
+   ============================================================ */
+
+document.getElementById("btn-logout").addEventListener("click", async () => {
+  try {
+    await api("/api/auth/logout", { method: "POST" });
+  } catch (e) { /* ignore */ }
+  window.location.href = "/";
+});
+
+/* ============================================================
+   NAVBAR SCROLL
+   ============================================================ */
+
+(function initNavbarScroll() {
+  const navbar = document.getElementById("navbar");
+  if (!navbar) return;
+  window.addEventListener("scroll", () => {
+    navbar.classList.toggle("scrolled", window.scrollY > 20);
+  }, { passive: true });
+})();
+
+/* ============================================================
+   CLIENT-SIDE AUTH GUARD (double-check server-side protection)
+   ============================================================ */
+
+(async function authGuard() {
+  try {
+    const res = await fetch("/api/auth/status");
+    const data = await res.json();
+    if (!data.authenticated) {
+      window.location.href = "/login?redirect=" + encodeURIComponent(window.location.pathname);
+      return;
+    }
+  } catch {
+    window.location.href = "/login?redirect=" + encodeURIComponent(window.location.pathname);
+    return;
+  }
+  updateBackendStatus();
+})();
+
+/* ============================================================
    boot / init
    ============================================================ */
 
@@ -1573,4 +1641,3 @@ const initialHash = location.hash.replace("#", "");
 if (VIEWS[initialHash]) navigate(initialHash, false);
 else navigate("dashboard", false);
 tickClock();
-updateBackendStatus();

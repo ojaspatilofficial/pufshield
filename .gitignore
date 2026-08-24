@@ -10,12 +10,19 @@ htmlcov/
 
 # Env / secrets
 .env
+.env.*
 
 # Data / generated artifacts (DB, PUF credential secret, CA/device keys)
 data/
+
+# Runtime uploads
+uploads/
 
 # OS / editor
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+*.swp
+*.swo
+*~

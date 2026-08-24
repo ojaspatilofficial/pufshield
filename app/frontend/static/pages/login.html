@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light" />
+  <title>Login | PUFShield</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/static/css/public.css">
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="login-left">
+      <div class="login-brand">
+        <svg viewBox="0 0 36 36" width="48" height="48" fill="none">
+          <path d="M18 2L4 9V17.5C4 26.04 9.88 33.98 18 36C26.12 33.98 32 26.04 32 17.5V9L18 2Z" fill="#2F80ED" opacity="0.12" stroke="#2F80ED" stroke-width="2"/>
+          <path d="M18 10L11 13.5V19C11 23.7 13.88 28.08 18 29.5C22.12 28.08 25 23.7 25 19V13.5L18 10Z" fill="#2F80ED"/>
+          <path d="M15.5 19L17.5 21L21.5 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="login-brand-name">PUFShield</div>
+        <div class="login-brand-tagline">Hardware Security Platform</div>
+      </div>
+      <div class="login-visual">
+        <div class="login-visual-steps">
+          <div class="login-step">
+            <div class="login-step-icon">&#x1F510;</div>
+            <div class="login-step-text">Device Identity</div>
+          </div>
+          <div class="login-step">
+            <div class="login-step-icon">&#x1F511;</div>
+            <div class="login-step-text">Cryptographic Auth</div>
+          </div>
+          <div class="login-step">
+            <div class="login-step-icon">&#x1F6E1;&#xFE0F;</div>
+            <div class="login-step-text">Secure Console</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-right">
+      <div class="login-form-card">
+        <div class="login-form-title">Login to Security Console</div>
+        <div class="login-form-subtitle">Enter your credentials to access the PUFShield dashboard.</div>
+
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-username">Username</label>
+            <input type="text" id="login-username" name="username" value="admin" required autocomplete="username" />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" name="password" value="pufshield" required autocomplete="current-password" />
+          </div>
+          <div id="login-error" class="form-error" style="display:none"></div>
+          <button type="submit" class="login-submit" id="login-btn">Sign In</button>
+        </form>
+
+        <div class="login-links">
+          <a href="/register" class="login-link">Create Account</a>
+          <span style="color:var(--text-muted)">&middot;</span>
+          <a href="/" class="login-link">Back to Home</a>
+        </div>
+
+        <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border); text-align:center;">
+          <div style="font-size:11px; color:var(--text-muted); font-family:var(--mono);">Demo: admin / pufshield</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/public.js"></script>
+</body>
+</html>

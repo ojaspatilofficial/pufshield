@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PUFShield — System Architecture Diagram</title>
+<style>
+  :root {
+    --bg:#0b1120;--bg2:#111827;--bg3:#0f172a;--bdr:#1e293b;--bdr2:#334155;
+    --tx:#e2e8f0;--txd:#94a3b8;--txb:#f8fafc;
+    --blue:#3b82f6;--blued:#1e40af;--blueb:#1e3a5f;
+    --grn:#22c55e;--grnd:#166534;--grnb:#14532d;
+    --red:#ef4444;--redd:#991b1b;--redb:#7f1d1d;
+    --pur:#a855f7;--purd:#6b21a8;--purb:#3b0764;
+    --org:#f59e0b;--orgd:#92400e;--orgb:#78350f;
+    --cyn:#06b6d4;--cynd:#155e75;
+    --gry:#64748b;--gryb:#1e293b;--teal:#14b8a6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;padding:30px}
+  .tb{text-align:center;margin-bottom:32px;padding:24px 16px;border-bottom:2px solid var(--blued)}
+  .tb h1{font-size:26px;color:var(--txb);letter-spacing:1px;margin-bottom:4px}
+  .tb h2{font-size:14px;color:var(--blue);font-weight:400}
+  .tb .sub{font-size:11px;color:var(--txd);margin-top:4px}
+  .ly{position:relative;border:1px solid var(--bdr);border-radius:8px;margin-bottom:2px;padding:14px 16px;background:var(--bg3)}
+  .lt{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px}
+  .b{font-size:8px;padding:2px 7px;border-radius:10px;font-weight:600;letter-spacing:.5px}
+  .bb{background:var(--blued);color:var(--blue)}.bg{background:var(--grnd);color:var(--grn)}.bp{background:var(--purd);color:var(--pur)}.br{background:var(--redd);color:var(--red)}.bo{background:var(--orgd);color:var(--org)}.bx{background:var(--gryb);color:var(--gry)}.bc{background:var(--cynd);color:var(--cyn)}
+  .g{display:grid;gap:8px}.c2{grid-template-columns:1fr 1fr}.c3{grid-template-columns:1fr 1fr 1fr}.c4{grid-template-columns:1fr 1fr 1fr 1fr}.c5{grid-template-columns:1fr 1fr 1fr 1fr 1fr}
+  .m{background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;padding:10px 12px}
+  .mt{font-size:10px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .m ul{list-style:none;padding:0}
+  .m li{font-size:9.5px;color:var(--txd);padding:1.5px 0 1.5px 10px;position:relative}
+  .m li::before{content:'';position:absolute;left:0;top:7px;width:4px;height:4px;border-radius:50%;background:var(--bdr2)}
+  .ml{font-size:9px;color:var(--gry);font-family:'Cascadia Code','Fira Code',monospace}
+  .mb{border-left:3px solid var(--blue)}.mg{border-left:3px solid var(--grn)}.mp{border-left:3px solid var(--pur)}.mr{border-left:3px solid var(--red)}.mo{border-left:3px solid var(--org)}.mc{border-left:3px solid var(--cyn)}.mx{border-left:3px solid var(--gry)}.mh{border-left:3px solid var(--teal)}
+  .fl{display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 0;font-size:10px;color:var(--txd)}
+  .aw{font-size:13px;color:var(--blue)}.ag{color:var(--grn)}.ap{color:var(--pur)}.ar{color:var(--red)}.ao{color:var(--org)}
+  .nt{font-size:9px;color:var(--txd);padding:6px 10px;border-left:3px solid var(--bdr2);background:var(--bg2);border-radius:0 4px 4px 0;margin:6px 0}
+  .nt strong{color:var(--tx)}
+  .hl{border:2px solid var(--blue);box-shadow:0 0 20px rgba(59,130,246,.1)}
+  .hp{border:2px solid var(--pur);box-shadow:0 0 20px rgba(168,85,247,.1)}
+  .users{display:flex;gap:20px;justify-content:center;margin-bottom:6px}
+  .usr{text-align:center}
+  .ui{width:36px;height:36px;border-radius:50%;background:var(--blueb);border:2px solid var(--blue);display:flex;align-items:center;justify-content:center;margin:0 auto 3px;font-size:14px}
+  .ul{font-size:9px;color:var(--txd)}
+  .ps{display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--bg2);border:1px solid var(--bdr);border-radius:4px}
+  .sn{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+  .st{font-size:10px;font-weight:500}
+  .sd{font-size:8.5px;color:var(--txd);margin-left:auto}
+  .pa{text-align:center;font-size:11px;color:var(--bdr2);padding:0}
+  .sb{background:var(--blued);color:var(--blue);border:1px solid var(--blue)}.sp{background:var(--purd);color:var(--pur);border:1px solid var(--pur)}.so{background:var(--orgd);color:var(--org);border:1px solid var(--org)}.sg{background:var(--grnd);color:var(--grn);border:1px solid var(--grn)}.sc{background:var(--cynd);color:var(--cyn);border:1px solid var(--cyn)}
+  .d{text-align:center;padding:10px;margin:6px auto;max-width:300px;background:var(--orgb);border:2px solid var(--org);border-radius:4px}
+  .dt{font-size:11px;font-weight:700;color:var(--org)}.ds{font-size:8px;color:var(--txd);margin-top:2px}
+  .oc{display:flex;gap:12px;justify-content:center;margin-top:6px}
+  .oi{padding:8px 16px;border-radius:6px;text-align:center;min-width:140px}
+  .op{background:var(--grnb);border:1px solid var(--grn)}.of{background:var(--redb);border:1px solid var(--red)}
+  .ot{font-size:10px;font-weight:700}.op .ot{color:var(--grn)}.of .ot{color:var(--red)}
+  .od{font-size:8px;color:var(--txd);margin-top:2px}
+  .dbt{font-size:9px;width:100%;border-collapse:collapse}.dbt td{padding:2px 6px;border-bottom:1px solid var(--bdr);color:var(--txd)}
+  .atk{background:var(--bg2);border:1px solid var(--bdr);border-left:3px solid var(--red);border-radius:6px;padding:10px 12px}
+  .att{font-size:10px;font-weight:700;color:var(--red);margin-bottom:2px}
+  .ad{font-size:9px;color:var(--txd)}
+  .dd{font-size:9px;color:var(--grn);margin-top:3px;font-weight:600}
+  .fu{border-style:dashed;opacity:.7}
+  .mt8{margin-top:8px}.mb8{margin-bottom:8px}
+  .sc2{display:flex;gap:16px}.sf{flex:1}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;margin-top:12px}
+  .li{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--txd)}
+  .lc{width:12px;height:3px;border-radius:2px}
+  .ld{width:12px;height:0;border-top:2px dashed}
+  .bt{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--gry);margin-bottom:3px}
+  .tf{font-size:9px;color:var(--txd);font-family:'Cascadia Code','Fira Code',monospace}
+</style>
+</head>
+<body>
+
+<div class="tb">
+  <h1>PUFShield &mdash; System Architecture</h1>
+  <h2>SRAM PUF &amp; PKI-Based Secure Boot Architecture</h2>
+  <div class="sub">Hardware-Rooted Device Authentication &amp; Firmware Integrity Verification &mdash; CDAC Hackathon 2026</div>
+</div>
+
+<!-- L1: Users -->
+<div class="ly">
+  <div class="lt" style="color:var(--blue)">LAYER 1 &mdash; USER / ADMINISTRATOR <span class="b bb">INTERACTION</span></div>
+  <div class="users">
+    <div class="usr"><div class="ui">&#128100;</div><div class="ul">Security<br/>Administrator</div></div>
+    <div class="usr"><div class="ui">&#128187;</div><div class="ul">Developer<br/>/ Tester</div></div>
+    <div class="usr"><div class="ui">&#127942;</div><div class="ul">Hackathon<br/>Judge</div></div>
+  </div>
+  <div class="fl"><span>HTTPS / REST API</span><span class="aw">&darr;</span></div>
+</div>
+
+<!-- L2: Frontend -->
+<div class="ly">
+  <div class="lt" style="color:var(--blue)">LAYER 2 &mdash; FRONTEND / VISUALIZATION <span class="b bb">HTML &middot; CSS &middot; JS</span></div>
+  <div class="g c4">
+    <div class="m mb"><div class="mt" style="color:var(--blue)">&#128200; Dashboard</div><ul><li>System Overview</li><li>Security Metrics</li><li>Real-time Charts</li><li>Boot Statistics</li></ul></div>
+    <div class="m mb"><div class="mt" style="color:var(--blue)">&#128225; Device Management</div><ul><li>Register Devices</li><li>PUF Enrollment</li><li>Certificate View</li><li>Device Status</li></ul></div>
+    <div class="m mb"><div class="mt" style="color:var(--blue)">&#128270; SRAM PUF Analysis</div><ul><li>PUF Metrics Display</li><li>Digital Twin Grid</li><li>Stability / BER</li><li>Environmental Data</li></ul></div>
+    <div class="m mb"><div class="mt" style="color:var(--blue)">&#128274; PKI / Certificates</div><ul><li>Certificate Chain</li><li>Key Management</li><li>CA Information</li><li>Binding Status</li></ul></div>
+    <div class="m mo"><div class="mt" style="color:var(--org)">&#128190; Firmware Mgmt</div><ul><li>Upload Firmware</li><li>Sign / Verify</li><li>Version Control</li><li>Anti-Rollback</li></ul></div>
+    <div class="m mg"><div class="mt" style="color:var(--grn)">&#128737; Secure Boot Monitor</div><ul><li>Boot Pipeline Status</li><li>Stage-by-Stage Result</li><li>Boot History</li><li>Failure Analysis</li></ul></div>
+    <div class="m mr"><div class="mt" style="color:var(--red)">&#9888; Attack Center</div><ul><li>Run Attack Scenarios</li><li>Detection Results</li><li>Clone / Tamper / Replay</li><li>Certificate Forgery</li></ul></div>
+    <div class="m mx"><div class="mt" style="color:var(--gry)">&#128220; Security Logs</div><ul><li>Audit Trail</li><li>Event Timeline</li><li>Severity Filtering</li><li>Export</li></ul></div>
+  </div>
+  <div class="nt"><strong>Technology:</strong> HTML5 &middot; CSS3 &middot; Vanilla JavaScript &middot; Chart.js &middot; Frosted Glass UI</div>
+  <div class="fl"><span>REST API (JSON)</span><span class="aw">&darr;</span></div>
+</div>
+
+<!-- L3: Backend -->
+<div class="ly">
+  <div class="lt" style="color:var(--cyn)">LAYER 3 &mdash; API / BACKEND <span class="b bc">Python 3.13 &middot; FastAPI &middot; Pydantic</span></div>
+  <div class="g c3">
+    <div class="m mc">
+      <div class="mt" style="color:var(--cyn)">API Router (30+ Endpoints)</div>
+      <ul>
+        <li>/api/devices/*</li><li>/api/puf/*</li><li>/api/firmware/*</li><li>/api/boot/*</li><li>/api/auth/*</li><li>/api/attacks/*</li><li>/api/security/*</li><li>/api/dashboard/*</li><li>/api/pqc/*</li><li>/api/zkp/*</li><li>/api/environmental/*</li><li>/api/anomaly/*</li><li>/api/risk/*</li><li>/api/transparency/*</li><li>/api/twin/*</li>
+      </ul>
+    </div>
+    <div class="m mc">
+      <div class="mt" style="color:var(--cyn)">Request Pipeline</div>
+      <ul><li>Request Validation (Pydantic)</li><li>Session Authentication</li><li>Error Handling</li><li>Security Event Logging</li><li>Service Orchestration</li></ul>
+    </div>
+    <div class="m mc">
+      <div class="mt" style="color:var(--cyn)">Core Service Layer</div>
+      <ul><li>Device Provisioning</li><li>PUF Operations</li><li>PKI Management</li><li>Firmware Operations</li><li>Boot Orchestration</li><li>Attack Execution</li><li>PQC / ZKP / AI / Risk</li></ul>
+    </div>
+  </div>
+  <div class="fl"><span>Service Calls</span><span class="aw">&darr;</span></div>
+</div>
+
+<!-- L4: Security Services -->
+<div class="ly">
+  <div class="lt" style="color:var(--pur)">LAYER 4 &mdash; SECURITY SERVICES <span class="b bp">CRYPTOGRAPHIC CORE</span></div>
+
+  <div class="g c3 mb8">
+    <div class="m mp" style="grid-row:span 2">
+      <div class="mt" style="color:var(--pur)">&#9881; SRAM PUF Engine <span class="b bp" style="font-size:7px">SIMULATION</span></div>
+      <ul>
+        <li>Simulated SRAM Startup Pattern</li>
+        <li>Device-Specific Baseline (SHA-256 Hash-Chain)</li>
+        <li>Metastable Cell Mask</li>
+        <li>Noise Injection (p=0.5/cycle)</li>
+        <li>Multi-Capture Sampling (10 captures)</li>
+        <li>PUF Enrollment &amp; Reference Generation</li>
+        <li>PUF Reconstruction &amp; Credential Match</li>
+        <li>Intra/Inter-device Hamming Distance</li>
+        <li>BER &amp; Reliability Metrics</li>
+        <li>Digital Twin (16x16 SRAM Grid)</li>
+      </ul>
+      <div class="nt mt8"><strong>Software Simulation</strong> of physical SRAM PUF behavior. Each device receives a unique, deterministic PUF state.</div>
+    </div>
+
+    <div class="m mp">
+      <div class="mt" style="color:var(--pur)">&#128295; Fuzzy Extraction / Error Correction</div>
+      <ul><li>BCH Codec (GF(2^m) Galois Field)</li><li>BCH(31,16,7) Preset</li><li>Code-Offset Fuzzy Commitment</li><li>Berlekamp-Massey + Chien Search</li><li>Helper Data Storage</li><li>Noise Tolerance</li></ul>
+      <div class="fl mt8"><span>Noisy PUF + Helper Data</span></div>
+      <div class="fl"><span class="ap aw">&darr; BCH Error Correction</span></div>
+      <div class="fl"><span style="color:var(--grn)">Recovered Stable Secret</span></div>
+    </div>
+
+    <div class="m mp">
+      <div class="mt" style="color:var(--pur)">&#128273; Key Derivation</div>
+      <ul><li>HKDF-SHA256 (HMAC-based)</li><li>Domain-Separated Keys:</li><li style="padding-left:18px">device-auth</li><li style="padding-left:18px">firmware-encryption</li><li style="padding-left:18px">boot-integrity</li><li>Prefix: pufshield:v1:</li><li>Credential: HMAC-SHA256(secret, key)</li></ul>
+      <div class="fl mt8"><span>PUF Secret</span><span class="ap aw">&rarr;</span><span>HKDF-SHA256</span><span class="ap aw">&rarr;</span><span>Crypto Keys</span></div>
+    </div>
+  </div>
+
+  <div class="g c2 mb8">
+    <div class="m mp">
+      <div class="mt" style="color:var(--pur)">&#127975; Public Key Infrastructure (PKI)</div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <div style="flex:1;padding:6px;background:var(--bg);border-radius:4px;border:1px solid var(--bdr)">
+          <div style="font-size:9px;font-weight:700;color:var(--pur);margin-bottom:3px">Root CA</div>
+          <ul><li>Self-Signed Root Certificate</li><li>ECDSA P-256 Key Pair</li><li>X.509 BasicConstraints</li><li>Optional Intermediate CAs</li></ul>
+        </div>
+        <div style="flex:1;padding:6px;background:var(--bg);border-radius:4px;border:1px solid var(--bdr)">
+          <div style="font-size:9px;font-weight:700;color:var(--pur);margin-bottom:3px">Device Identity</div>
+          <ul><li>ECDSA P-256 Key Pair</li><li>X.509 Device Certificate</li><li>Signed by Root CA</li><li>RFC 5280 Chain Verification</li></ul>
+        </div>
+      </div>
+      <div class="nt mt8"><strong>Technology:</strong> Python cryptography &middot; ECDSA secp256r1 &middot; SHA-256 &middot; Max chain length 8</div>
+    </div>
+
+    <div class="m mp hp">
+      <div class="mt" style="color:var(--pur)">&#128279; PUF-PKI Binding Engine</div>
+      <ul><li>PUF-derived Device Identity</li><li>Device Public Key (SPKI DER)</li><li>Binding Hash = HKDF(Secret + DER SPKI)</li><li>Stored at Enrollment</li></ul>
+      <div class="mt8" style="padding:6px;background:var(--bg);border-radius:4px">
+        <div style="font-size:8px;color:var(--gry);margin-bottom:3px">AT BOOT:</div>
+        <div class="fl" style="padding:1px 0;font-size:9px">Current PUF + Current Public Key</div>
+        <div class="fl" style="padding:1px 0;font-size:9px"><span class="ap aw">&darr;</span> Recompute Binding Hash</div>
+        <div class="fl" style="padding:1px 0;font-size:9px"><span class="ap aw">&darr;</span> Compare with Registered Binding</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <div style="flex:1;text-align:center;padding:5px;background:var(--grnb);border:1px solid var(--grn);border-radius:4px;font-size:8px;font-weight:700;color:var(--grn)">MATCH &rarr; BOOT</div>
+        <div style="flex:1;text-align:center;padding:5px;background:var(--redb);border:1px solid var(--red);border-radius:4px;font-size:8px;font-weight:700;color:var(--red)">MISMATCH &rarr; CLONE DETECTED</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g c3">
+    <div class="m mp">
+      <div class="mt" style="color:var(--pur)">&#128274; Challenge-Response Auth</div>
+      <ul><li>CSPRNG 32-byte Nonce (TTL 60s)</li><li>Device Signs: ECDSA P-256</li><li>Message: pufshield-auth:v1:id:nonce</li><li>Server Verifies Signature</li><li>Server Verifies Cert Chain</li><li>Server Verifies PUF-PKI Binding</li><li>Atomic Nonce Consumption</li><li>Triple Audit Logging</li></ul>
+    </div>
+    <div class="m mo">
+      <div class="mt" style="color:var(--org)">&#128190; Firmware Security</div>
+      <ul><li>Firmware Binary + Version</li><li>SHA-256 Digest</li><li>Dual Signature:</li><li style="padding-left:18px">&bull; Device ECDSA (body)</li><li style="padding-left:18px">&bull; Manufacturer ECDSA (manifest)</li><li>Strict Version Parser</li><li>Anti-Rollback Policy</li></ul>
+      <div class="nt mt8"><strong>Any firmware modification changes SHA-256 digest.</strong></div>
+    </div>
+    <div class="m mh">
+      <div class="mt" style="color:var(--teal)">&#129302; Advanced Services</div>
+      <ul><li><strong>AI Anomaly:</strong> Z-score + EWMA + composite</li><li><strong>Risk Engine:</strong> 7-layer weighted scoring</li><li><strong>Merkle Log:</strong> Append-only SHA-256 tree</li><li><strong>Environmental PUF:</strong> Arrhenius thermal model</li><li><strong>PQC:</strong> ML-DSA-65 (FIPS 204) demo</li><li><strong>ZKP:</strong> Schnorr Sigma + Fiat-Shamir</li><li><strong>Digital Twin:</strong> 16x16 SRAM grid</li></ul>
+    </div>
+  </div>
+</div>
+
+<!-- L5: Device Identity -->
+<div class="ly">
+  <div class="lt" style="color:var(--pur)">LAYER 5 &mdash; DEVICE IDENTITY <span class="b bp">PUF x PKI</span></div>
+  <div class="g c2">
+    <div class="m mp"><div class="mt" style="color:var(--pur)">PUF-Derived Identity</div><ul><li>Physical SRAM Startup Pattern (Simulated)</li><li>BCH Error-Corrected to Stable Reference</li><li>HKDF-SHA256 Domain-Separated Keys</li><li>Server-side HMAC Credential</li></ul></div>
+    <div class="m mp"><div class="mt" style="color:var(--pur)">Certificate-Based Identity</div><ul><li>ECDSA P-256 Device Key Pair</li><li>X.509 Certificate (CA-Signed)</li><li>RFC 5280 Chain Verification</li><li>PUF-PKI Binding Hash</li></ul></div>
+  </div>
+</div>
+
+<!-- L6: Firmware -->
+<div class="ly">
+  <div class="lt" style="color:var(--org)">LAYER 6 &mdash; FIRMWARE SECURITY <span class="b bo">INTEGRITY &middot; AUTHENTICITY</span></div>
+  <div class="g c3">
+    <div class="m mo"><div class="mt" style="color:var(--org)">Firmware Repository</div><ul><li>Firmware Binary</li><li>Version (Strict Dotted)</li><li>Metadata</li><li>SHA-256 Hash</li><li>Dual ECDSA Signature</li></ul></div>
+    <div class="m mo"><div class="mt" style="color:var(--org)">Integrity Verification</div><ul><li>Calculate SHA-256 of Binary</li><li>Compare with Registered Hash</li><li>Verify Device ECDSA Signature</li><li>Verify Manufacturer ECDSA Manifest</li></ul></div>
+    <div class="m mo"><div class="mt" style="color:var(--org)">Anti-Rollback Policy</div><ul><li>Current Firmware Version</li><li>Minimum Allowed Version</li><li>Strict Dotted-Version Compare</li><li>Fail-Closed on Invalid Format</li></ul></div>
+  </div>
+</div>
+
+<!-- L7: Secure Boot -->
+<div class="ly hl">
+  <div class="lt" style="color:var(--grn)">LAYER 7 &mdash; SECURE BOOT ENGINE <span class="b bg">11-STAGE PIPELINE</span></div>
+  <div class="sc2">
+    <div style="flex:2">
+      <div class="g" style="gap:0">
+        <div class="ps"><div class="sn sb">1</div><div class="st">SRAM PUF Measurement</div><div class="sd">Read simulated startup pattern</div></div><div class="pa">&darr;</div>
+        <div class="ps"><div class="sn sp">2</div><div class="st">PUF Reconstruction</div><div class="sd">BCH error correction + credential match</div></div><div class="pa">&darr;</div>
+        <div class="ps"><div class="sn sp">3</div><div class="st">PUF-PKI Binding Verification</div><div class="sd">Recompute &amp; compare binding hash</div></div><div class="pa">&darr;</div>
+        <div class="ps"><div class="sn sp">4</div><div class="st">Certificate Chain Validation</div><div class="sd">RFC 5280 &middot; ECDSA &middot; Expiry</div></div><div class="pa">&darr;</div>
+        <div class="ps"><div class="sn sp">5</div><div class="st">Challenge-Response Authentication</div><div class="sd">Fresh nonce &middot; ECDSA sig &middot; Replay protection</div></div><div class="pa">&darr;</div>
+        <div class="ps"><div class="sn so">6</div><div class="st">Firmware SHA-256 Verification</div><div class="sd">Binary integrity check</div></div><div class="pa">&darr;</div>
+        <div class="ps"><div class="sn so">7</div><div class="st">Firmware Signature Verification</div><div class="sd">Device ECDSA + Manufacturer ECDSA</div></div><div class="pa">&darr;</div>
+        <div class="ps"><div class="sn so">8</div><div class="st">Anti-Rollback Version Check</div><div class="sd">Strict version comparison (fail-closed)</div></div><div class="pa">&darr;</div>
+        <div class="ps"><div class="sn sc">9</div><div class="st">PQC Key Registration</div><div class="sd">ML-DSA-65 &middot; informational</div></div><div class="pa">&darr;</div>
+        <div class="ps"><div class="sn sc">10</div><div class="st">Transparency Log Check</div><div class="sd">Merkle inclusion proof &middot; informational</div></div><div class="pa">&darr;</div>
+        <div class="ps"><div class="sn sc">11</div><div class="st">Anomaly + Risk Assessment</div><div class="sd">AI scoring &middot; risk evaluation &middot; informational</div></div>
+      </div>
+    </div>
+    <div style="flex:1">
+      <div style="font-size:10px;font-weight:700;color:var(--grn);margin-bottom:6px">BOOT DECISION</div>
+      <div class="d" style="max-width:100%"><div class="dt">ALL 11 STAGES PASS?</div><div class="ds">8 blocking + 3 informational</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+        <div class="oi op"><div class="ot">&#9989; BOOT ALLOWED</div><div class="od">Device authenticated, firmware verified, no threats</div></div>
+        <div class="oi of"><div class="ot">&#10060; BOOT BLOCKED</div><div class="od">First failure point recorded with explanation</div></div>
+      </div>
+      <div class="mt8" style="font-size:8px;color:var(--gry)">
+        <div style="font-weight:700;margin-bottom:3px">FAILURE REASONS:</div>
+        <div>&bull; PUF mismatch</div><div>&bull; Reconstruction failure</div><div>&bull; Certificate invalid / expired</div>
+        <div>&bull; Binding mismatch (clone)</div><div>&bull; Auth failure / replay</div><div>&bull; Firmware hash mismatch</div>
+        <div>&bull; Invalid signature</div><div>&bull; Firmware rollback</div><div>&bull; Device not registered</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- L8: Database -->
+<div class="ly">
+  <div class="lt" style="color:var(--gry)">LAYER 8 &mdash; DATABASE / STORAGE <span class="b bx">SQLite</span></div>
+  <div class="g c4">
+    <div class="m mx"><div class="mt" style="color:var(--gry);font-size:9px">Devices</div><table class="dbt"><tr><td>device_id</td></tr><tr><td>public_key</td></tr><tr><td>certificate</td></tr><tr><td>status</td></tr><tr><td>binding_hash</td></tr></table></div>
+    <div class="m mx"><div class="mt" style="color:var(--gry);font-size:9px">PUF Enrollments</div><table class="dbt"><tr><td>device_id</td></tr><tr><td>helper_data</td></tr><tr><td>reference</td></tr><tr><td>metrics (BER, HD)</td></tr><tr><td>enrollment_ts</td></tr></table></div>
+    <div class="m mx"><div class="mt" style="color:var(--gry);font-size:9px">Certificates</div><table class="dbt"><tr><td>cert_pem</td></tr><tr><td>issuer</td></tr><tr><td>serial_number</td></tr><tr><td>valid_from/to</td></tr><tr><td>device_id</td></tr></table></div>
+    <div class="m mx"><div class="mt" style="color:var(--gry);font-size:9px">Firmware Images</div><table class="dbt"><tr><td>firmware_id</td></tr><tr><td>version</td></tr><tr><td>sha256_hash</td></tr><tr><td>signatures</td></tr><tr><td>metadata</td></tr></table></div>
+    <div class="m mx"><div class="mt" style="color:var(--gry);font-size:9px">Boot Logs</div><table class="dbt"><tr><td>device_id</td></tr><tr><td>timestamp</td></tr><tr><td>result (PASS/FAIL)</td></tr><tr><td>stage_results</td></tr><tr><td>timing_ms</td></tr></table></div>
+    <div class="m mx"><div class="mt" style="color:var(--gry);font-size:9px">Security Events</div><table class="dbt"><tr><td>event_type</td></tr><tr><td>severity</td></tr><tr><td>device_id</td></tr><tr><td>description</td></tr><tr><td>timestamp</td></tr></table></div>
+    <div class="m mx"><div class="mt" style="color:var(--gry);font-size:9px">Auth Challenges</div><table class="dbt"><tr><td>challenge_id</td></tr><tr><td>nonce</td></tr><tr><td>device_id</td></tr><tr><td>used (atomic)</td></tr><tr><td>expires_at</td></tr></table></div>
+    <div class="m mx"><div class="mt" style="color:var(--gry);font-size:9px">Attack / PQC / Risk / Log</div><table class="dbt"><tr><td>attack_logs</td></tr><tr><td>pqc_keys</td></tr><tr><td>risk_assessments</td></tr><tr><td>transparency_entries</td></tr></table></div>
+  </div>
+  <div class="nt mt8"><strong>Technology:</strong> SQLite (stdlib sqlite3) &middot; 12 tables &middot; Thread-safe &middot; Atomic challenge consumption</div>
+</div>
+
+<!-- L9: Attacks -->
+<div class="ly">
+  <div class="lt" style="color:var(--red)">LAYER 9 &mdash; ATTACK SIMULATION &amp; MONITORING <span class="b br">SECURITY TESTING</span></div>
+  <div class="g c3">
+    <div class="atk"><div class="att">&#128126; Device Cloning</div><div class="ad">Copy cert + key + firmware to new device with different PUF.</div><div class="dd">&#9989; Detected: PUF-PKI Binding Mismatch (Stage 3)</div></div>
+    <div class="atk"><div class="att">&#9888; Firmware Tampering</div><div class="ad">Modify firmware binary payload while keeping signatures.</div><div class="dd">&#9989; Detected: SHA-256 Hash Mismatch (Stage 6)</div></div>
+    <div class="atk"><div class="att">&#128260; Replay Attack</div><div class="ad">Reuse previously captured authentication response.</div><div class="dd">&#9989; Detected: Nonce Already Consumed (Stage 5)</div></div>
+    <div class="atk"><div class="att">&#128196; Certificate Forgery</div><div class="ad">Forge certificate using rogue CA, inject into key store.</div><div class="dd">&#9989; Detected: X.509 Chain Validation Failure (Stage 4)</div></div>
+    <div class="atk"><div class="att">&#8631; Firmware Rollback</div><div class="ad">Deploy older signed firmware to exploit known vulnerabilities.</div><div class="dd">&#9989; Detected: Anti-Rollback Version Policy (Stage 8)</div></div>
+    <div class="atk"><div class="att">&#9888; Wrong Signer</div><div class="ad">Sign firmware with unauthorized key instead of manufacturer key.</div><div class="dd">&#9989; Detected: Manufacturer Signature Failure (Stage 7)</div></div>
+  </div>
+  <div class="nt mt8"><strong>IMPORTANT:</strong> All attacks pass through the actual 11-stage boot pipeline. Attacks are NOT independent checks.</div>
+</div>
+
+<!-- L10: Future -->
+<div class="ly fu">
+  <div class="lt" style="color:var(--gry)">LAYER 10 &mdash; FUTURE HARDWARE IMPLEMENTATION <span class="b bx">ROADMAP</span></div>
+  <div class="fl">
+    <span style="padding:5px 10px;background:var(--bg2);border:1px dashed var(--gry);border-radius:4px;font-size:9px">Software SRAM PUF Simulator</span>
+    <span class="aw" style="color:var(--gry)">&rarr;</span>
+    <span style="padding:5px 10px;background:var(--bg2);border:1px dashed var(--gry);border-radius:4px;font-size:9px">Physical SRAM Startup Measurement</span>
+    <span class="aw" style="color:var(--gry)">&rarr;</span>
+    <span style="padding:5px 10px;background:var(--bg2);border:1px dashed var(--gry);border-radius:4px;font-size:9px">ESP32 / STM32 / MCU</span>
+    <span class="aw" style="color:var(--gry)">&rarr;</span>
+    <span style="padding:5px 10px;background:var(--bg2);border:1px dashed var(--gry);border-radius:4px;font-size:9px">Hardware Secure Boot</span>
+    <span class="aw" style="color:var(--gry)">&rarr;</span>
+    <span style="padding:5px 10px;background:var(--bg2);border:1px dashed var(--gry);border-radius:4px;font-size:9px">TPM / Secure Element</span>
+  </div>
+</div>
+
+<!-- Legend + Tech Stack -->
+<div style="display:flex;gap:12px;margin-top:12px">
+  <div class="legend" style="flex:2">
+    <div class="li"><div class="lc" style="background:var(--blue)"></div> Software / Data Flow</div>
+    <div class="li"><div class="lc" style="background:var(--pur)"></div> Cryptography / PKI</div>
+    <div class="li"><div class="lc" style="background:var(--grn)"></div> Success / Verification</div>
+    <div class="li"><div class="lc" style="background:var(--red)"></div> Attack / Failure / Block</div>
+    <div class="li"><div class="lc" style="background:var(--org)"></div> Firmware / Security Policy</div>
+    <div class="li"><div class="lc" style="background:var(--gry)"></div> Database / Storage</div>
+    <div class="li"><div class="ld" style="border-color:var(--gry)"></div> Future / Roadmap</div>
+  </div>
+  <div style="flex:1;background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px">
+    <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gry);margin-bottom:4px">Crypto Legend</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px">
+      <div style="font-size:8px;color:var(--txd)">SHA-256 &rarr; Integrity</div>
+      <div style="font-size:8px;color:var(--txd)">HKDF-SHA256 &rarr; Key Derivation</div>
+      <div style="font-size:8px;color:var(--txd)">ECDSA P-256 &rarr; Signatures</div>
+      <div style="font-size:8px;color:var(--txd)">X.509 &rarr; Certificates</div>
+      <div style="font-size:8px;color:var(--txd)">BCH &rarr; Error Correction</div>
+      <div style="font-size:8px;color:var(--txd)">PUF &rarr; Device Identity</div>
+      <div style="font-size:8px;color:var(--txd)">Schnorr &rarr; ZKP</div>
+      <div style="font-size:8px;color:var(--txd)">ML-DSA-65 &rarr; PQC</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tech Stack -->
+<div class="ly mt8">
+  <div class="lt" style="color:var(--gry)">TECHNOLOGY STACK <span class="b bx">IMPLEMENTED</span></div>
+  <div class="g c5">
+    <div class="m mx"><div class="mt" style="color:var(--gry);font-size:9px">Backend</div><div class="bt">RUNTIME</div><div class="tf">Python 3.13<br/>FastAPI<br/>Pydantic v2<br/>Uvicorn</div></div>
+    <div class="m mp"><div class="mt" style="color:var(--pur);font-size:9px">Cryptography</div><div class="bt">ALGORITHMS</div><div class="tf">cryptography lib<br/>SHA-256 / HMAC-SHA256<br/>HKDF-SHA256<br/>ECDSA P-256<br/>X.509 / RFC 5280</div></div>
+    <div class="m mp"><div class="mt" style="color:var(--pur);font-size:9px">PUF Simulation</div><div class="bt">CORE</div><div class="tf">SRAM PUF Sim<br/>BCH Codec<br/>Fuzzy Extraction<br/>HKDF KDF<br/>Digital Twin</div></div>
+    <div class="m mx"><div class="mt" style="color:var(--gry);font-size:9px">Database</div><div class="bt">STORAGE</div><div class="tf">SQLite (stdlib)<br/>12 Tables<br/>Thread-safe<br/>Atomic Ops</div></div>
+    <div class="m mb"><div class="mt" style="color:var(--blue);font-size:9px">Frontend + Dev</div><div class="bt">PRESENTATION</div><div class="tf">HTML5 / CSS3<br/>JavaScript<br/>Chart.js<br/>Pytest / Git</div></div>
+  </div>
+</div>
+
+</body>
+</html>
