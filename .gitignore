@@ -12,6 +12,8 @@ htmlcov/
 .env
 .env.*
 
+docs/
+
 # Data / generated artifacts (DB, PUF credential secret, CA/device keys)
 data/
 
