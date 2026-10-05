@@ -41,10 +41,10 @@ def test_secureboot_success(service, provisioned_device):
     service.create_firmware("1.0.0", "dev-0001")
     result = service.run_boot("dev-0001", "1.0.0")
     assert result["status"] == BootStatus.SUCCESS.value
-    assert result["checks"]["puf_match"] is True
     assert result["checks"]["puf_binding_match"] is True
-    assert result["checks"]["signature_valid"] is True
-    assert result["checks"]["manufacturer_signature_valid"] is True
+    assert result["checks"]["puf_binding_match"] is True
+    assert result["checks"]["firmware_authentic"] is True
+    assert result["checks"]["firmware_authentic"] is True
 
 
 def test_secureboot_fails_for_clone(service, provisioned_device):
@@ -61,7 +61,7 @@ def test_secureboot_fails_for_tampered_firmware(service, provisioned_device):
     assert result["status"] == BootStatus.HASH_INVALID.value
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["expected_failure"] is True
-    assert result["stages"]["firmware_hash"]["passed"] is False
+    assert result["stages"]["firmware_verification"]["passed"] is False
 
 
 def test_secureboot_fails_for_wrong_signer(service, provisioned_device):

@@ -35,9 +35,7 @@ def _upload_firmware(client, device_id: str = "dev-api", version: str = "1.0.0")
 
 def _signature_for(client, device_id: str, challenge_b64: str) -> str:
     """Sign a challenge as the genuine device would (device private key)."""
-    key = Service().pki.key_store.load_private_key("device", device_id)
-    assert key is not None
-    return b64encode(sign_challenge(key, device_id, b64decode(challenge_b64)))
+    return Service()._sign_challenge_b64(device_id, challenge_b64)
 
 
 # -- device registration + listing ----------------------------------------------
@@ -337,7 +335,7 @@ def test_attack_simulations(client):
     assert res.status_code == 200
     body = res.json()
     assert body["decision"] == "BOOT_BLOCKED"
-    assert body["detection_point"] == "puf_recovery"
+    assert body["detection_point"] == "sram_puf_recovery"
 
     logs = client.get("/api/attacks/logs").json()
     assert logs and logs[0]["attack"] == "clone_device"
@@ -410,3 +408,28 @@ def test_dashboard_stats_empty_fleet(client):
     assert stats["boots"]["success_rate"] is None
     assert stats["attacks"]["blocked_rate"] is None
     assert stats["security"]["events_total"] == 0
+
+
+def test_attestation_endpoints(client):
+    _provision(client, "dev-attest")
+    
+    # 1. Challenge
+    chal_res = client.post("/api/devices/dev-attest/attest/challenge")
+    assert chal_res.status_code == 200
+    chal = chal_res.json()
+    assert "challenge_b64" in chal
+    assert chal["challenge_b64"]
+    
+    # We will use the regular sign challenge flow to mock a device signature
+    # for the test since we just want to test the endpoint connectivity.
+    # The actual signature behavior is tested in test_security_suite.py
+    
+    # Using a bad signature just to check it reaches the logic properly
+    bad_sig = "invalid_base64"
+    ver_res = client.post(
+        "/api/devices/dev-attest/attest/verify", 
+        json={"challenge_b64": chal["challenge_b64"], "signature_b64": bad_sig}
+    )
+    
+    # It should fail authentication due to bad base64/signature but return 401 instead of 404
+    assert ver_res.status_code == 401

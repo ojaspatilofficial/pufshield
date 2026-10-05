@@ -26,7 +26,7 @@ DEVICE_KEY_USAGE = x509.KeyUsage(
 
 
 def _utcnow() -> dt.datetime:
-    return dt.datetime.now(dt.timezone.utc)
+    return dt.datetime.utcnow()
 
 
 def _build_cert(
@@ -165,7 +165,7 @@ def test_validation_at_specific_time(pki: PKIManager):
     now = _utcnow()
     cert = pki.issue_device_certificate("dev-at-time")
     assert pki.verify_device_certificate(cert, at_time=now)
-    assert not pki.verify_device_certificate(cert, at_time=cert.not_valid_before_utc - dt.timedelta(seconds=1))
+    assert not pki.verify_device_certificate(cert, at_time=cert.not_valid_before - dt.timedelta(seconds=1))
 
 
 def test_tampered_signature_rejected(pki: PKIManager):

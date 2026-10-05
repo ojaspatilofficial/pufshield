@@ -108,6 +108,11 @@ class AuthenticateRequest(BaseModel):
     signature_b64: str = Field(min_length=1, description="Base64 ECDSA signature over the challenge")
 
 
+class AttestVerifyRequest(BaseModel):
+    challenge_b64: str = Field(min_length=1, description="Base64 one-time challenge nonce")
+    signature_b64: str = Field(min_length=1, description="Base64 ECDSA signature over the challenge")
+
+
 @router.get("/health")
 def health() -> dict:
     return {"status": "ok", "service": "PUFShield"}
@@ -283,6 +288,28 @@ def run_boot(req: BootRequest, service: Service = Depends(get_service)) -> dict:
 @router.get("/boot/logs")
 def list_boot_logs(limit: int = Query(default=100, ge=1, le=1000), service: Service = Depends(get_service)) -> list[dict]:
     return service.list_boot_logs(limit)
+
+
+@router.post("/devices/{device_id}/attest/challenge")
+def attest_challenge(device_id: str, service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.issue_auth_challenge(device_id)
+    except DeviceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/devices/{device_id}/attest/verify")
+def attest_verify(device_id: str, req: AttestVerifyRequest, service: Service = Depends(get_service)) -> dict:
+    try:
+        return service.authenticate_device(device_id, req.challenge_b64, req.signature_b64)
+    except (DeviceNotFound, NoEnrollmentError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except AuthenticationError as exc:
+        raise HTTPException(
+            status_code=401,
+            detail=exc.message,
+            headers={"X-Auth-Reason": exc.reason},
+        )
 
 
 @router.post("/auth/challenge")

@@ -17,8 +17,7 @@ from app.services import DeviceNotFound
 
 def _sign_b64(service, device_id: str, challenge_b64: str) -> str:
     """Simulate the device signing the challenge with its private key."""
-    key = service.pki.key_store.load_private_key("device", device_id)
-    return b64encode(sign_challenge(key, device_id, b64decode(challenge_b64)))
+    return service._sign_challenge_b64(device_id, challenge_b64)
 
 
 def _tampered_signature(service, device_id: str, challenge_b64: str) -> str:

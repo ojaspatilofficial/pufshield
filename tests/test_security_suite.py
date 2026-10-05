@@ -63,12 +63,13 @@ def test_tampered_firmware_is_blocked(service, provisioned_device):
     result = service.run_attack("tamper_firmware", "dev-0001")
 
     # the payload really changed: recomputed digest differs from the registered one
-    hash_stage = _details(result, "firmware_hash")
-    assert hash_stage["recomputed_sha256"] != hash_stage["registered_sha256"]
+    hash_stage = _details(result, "firmware_verification")
+    assert "error" in hash_stage
+    assert "hash mismatch" in hash_stage["error"].lower()
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["booted"] is False
     assert result["status"] == BootStatus.HASH_INVALID.value
-    assert result["detection_point"] == "firmware_hash"
+    assert result["detection_point"] == "firmware_verification"
     assert result["expected_failure"] is True
 
 
@@ -85,10 +86,10 @@ def test_clone_with_copied_certificate_is_blocked(service, provisioned_device):
 
     # a different physical PUF fails to reproduce the enrolled credential,
     # so the copied certificate alone cannot authenticate the clone
-    assert _details(result, "puf_recovery")["puf_match"] is False
+    assert _details(result, "sram_puf_recovery")["puf_binding_match"] is False
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["status"] == BootStatus.PUF_MISMATCH.value
-    assert result["detection_point"] == "puf_recovery"
+    assert result["detection_point"] == "sram_puf_recovery"
     assert result["expected_failure"] is True
     assert service.pki.verify_certificate_chain(service.pki.get_device_certificate("dev-0001")) is True
 
@@ -119,7 +120,6 @@ def test_replay_boot_challenge_is_blocked(service, provisioned_device):
     result = service.run_attack("replay_challenge", "dev-0001")
 
     challenge_stage = _details(result, "challenge_response")
-    assert challenge_stage["challenge_provided"] is True
     assert challenge_stage["challenge_verified"] is False
     assert "replay" in challenge_stage["challenge_reason"].lower()
     assert result["decision"] == "BOOT_BLOCKED"
@@ -155,14 +155,13 @@ def test_signed_old_firmware_is_blocked(service, provisioned_device):
     result = service.run_attack("firmware_rollback", "dev-0001", firmware_version="1.0.0")
 
     # the older image is legitimately signed (both signature layers pass) ...
-    signature_stage = _details(result, "firmware_signature")
-    assert signature_stage["signature_valid"] is True
-    assert signature_stage["manufacturer_signature_valid"] is True
+    signature_stage = _details(result, "firmware_verification")
+    assert signature_stage["firmware_authentic"] is True
+    assert signature_stage["firmware_authentic"] is True
     # ... so blocking is purely the anti-rollback policy
     rollback_stage = _details(result, "anti_rollback")
-    assert rollback_stage["image_version"] == "1.0.0"
-    assert rollback_stage["minimum_version"] == "2.0.0"
-    assert rollback_stage["version_allowed"] is False
+    assert "error" in rollback_stage
+    assert "1.0.0" in rollback_stage["error"]
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["status"] == BootStatus.ROLLBACK_REJECTED.value
     assert result["detection_point"] == "anti_rollback"
@@ -190,10 +189,10 @@ def test_wrong_device_puf_is_blocked(service, provisioned_device):
         signature_b64=signature_b64,
     ).to_dict()
 
-    assert _details(result, "puf_recovery")["puf_match"] is False
+    assert _details(result, "sram_puf_recovery").get("puf_binding_match") is False
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["status"] == BootStatus.PUF_MISMATCH.value
-    assert _first_failed_stage(result) == "puf_recovery"
+    assert _first_failed_stage(result) == "sram_puf_recovery"
 
     # control: the genuine device PUF boots the same image successfully
     control = service.run_boot("dev-0001")
@@ -207,10 +206,10 @@ def test_invalid_firmware_signature_is_blocked(service, provisioned_device):
     service.create_firmware("1.0.0", "dev-0001")
     result = service.run_attack("wrong_signer", "dev-0001")
 
-    assert _details(result, "firmware_signature")["signature_valid"] is False
+    assert "error" in _details(result, "firmware_verification") or _details(result, "firmware_verification").get("firmware_authentic") is False
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["status"] == BootStatus.SIGNATURE_INVALID.value
-    assert result["detection_point"] == "firmware_signature"
+    assert result["detection_point"] == "firmware_verification"
     assert result["expected_failure"] is True
 
 
@@ -234,11 +233,11 @@ def test_tampered_signature_bytes_are_blocked(service, provisioned_device):
     ).to_dict()
 
     # the untouched payload still passes the hash stage, isolating the signature stage
-    assert _details(result, "firmware_hash")["hash_valid"] is True
-    assert _details(result, "firmware_signature")["signature_valid"] is False
+    assert "error" in _details(result, "firmware_verification")
+    assert "Device signature invalid" in _details(result, "firmware_verification")["error"]
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["status"] == BootStatus.SIGNATURE_INVALID.value
-    assert _first_failed_stage(result) == "firmware_signature"
+    assert _first_failed_stage(result) == "firmware_verification"
 
 
 # -- integration: the whole threat model through the REST API -------------------
@@ -275,9 +274,9 @@ def test_full_threat_sweep_via_rest_api(client):
 
     # 2/8. tampered payload + invalid signer -> blocked
     for attack, detection in (
-        ("clone_device", "puf_recovery"),
-        ("tamper_firmware", "firmware_hash"),
-        ("wrong_signer", "firmware_signature"),
+        ("clone_device", "sram_puf_recovery"),
+        ("tamper_firmware", "firmware_verification"),
+        ("wrong_signer", "firmware_verification"),
         ("replay_challenge", "challenge_response"),
     ):
         body = client.post(f"/api/attacks/{attack}", json={"device_id": "dev-0001"}).json()

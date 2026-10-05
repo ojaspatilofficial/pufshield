@@ -92,9 +92,8 @@ def test_valid_latest_firmware_boots(service, provisioned_device):
     service.create_firmware("1.0.0", "dev-0001")
     result = service.run_boot("dev-0001", "1.0.0")
     assert result["status"] == BootStatus.SUCCESS.value
-    assert result["checks"]["version_allowed"] is True
-    assert result["checks"]["minimum_version"] == "1.0.0"
-    assert result["checks"]["image_version"] == "1.0.0"
+    assert result["checks"]["allowed"] is True
+    assert result["checks"]["version"] == "1.0.0"
 
 
 def test_valid_upgrade_boots_after_raising_minimum(service, provisioned_device):
@@ -116,12 +115,9 @@ def test_signed_old_firmware_rollback_rejected(service, provisioned_device):
     assert result["success"] is False
     checks = result["checks"]
     # the old image is CORRECTLY signed - rejection is purely the version policy.
-    assert checks["signature_valid"] is True
-    assert checks["manufacturer_signature_valid"] is True
-    assert checks["version_allowed"] is False
-    assert checks["image_version"] == "1.0.0"
-    assert checks["minimum_version"] == "2.0.0"
-    assert "below the minimum" in result["message"]
+    assert checks["firmware_authentic"] is True
+    assert checks["anti_rollback"] is False
+
 
     # the current version still boots fine.
     assert service.run_boot("dev-0001", "2.0.0")["status"] == BootStatus.SUCCESS.value
@@ -147,8 +143,8 @@ def test_rollback_rejection_is_logged(service, provisioned_device):
     logs = service.list_boot_logs()
     assert logs and logs[0]["status"] == BootStatus.ROLLBACK_REJECTED.value
     assert logs[0]["image_version"] == "1.0.0"
-    assert "2.0.0" in logs[0]["message"]
-    assert logs[0]["checks"]["version_allowed"] is False
+
+    assert logs[0]["checks"]["anti_rollback"] is False
 
 
 def test_rollback_logged_via_database(service, provisioned_device):

@@ -46,7 +46,7 @@ _DEVICE_KEY_USAGE = x509.KeyUsage(
 
 
 def _utcnow() -> dt.datetime:
-    return dt.datetime.now(dt.timezone.utc)
+    return dt.datetime.utcnow()
 
 
 def is_ca_certificate(cert: x509.Certificate) -> bool:
@@ -60,13 +60,13 @@ def is_ca_certificate(cert: x509.Certificate) -> bool:
 def is_valid_at(cert: x509.Certificate, at_time: dt.datetime | None = None) -> bool:
     """True if ``cert`` is inside its validity window at ``at_time`` (default: now)."""
     at = at_time or _utcnow()
-    return cert.not_valid_before_utc <= at <= cert.not_valid_after_utc
+    return cert.not_valid_before <= at <= cert.not_valid_after
 
 
 def is_expired(cert: x509.Certificate, at_time: dt.datetime | None = None) -> bool:
     """True if ``cert`` has expired at ``at_time`` (default: now)."""
     at = at_time or _utcnow()
-    return at > cert.not_valid_after_utc
+    return at > cert.not_valid_after
 
 
 def _verify_signature(cert: x509.Certificate, public_key) -> None:
@@ -309,9 +309,9 @@ class PKIManager:
         except Exception:  # noqa: BLE001 - any failure is reported as an invalid signature
             errors.append("certificate signature does not verify against the CA public key")
         at = at_time or _utcnow()
-        if at < cert.not_valid_before_utc:
+        if at < cert.not_valid_before:
             errors.append("certificate is not yet valid")
-        if at > cert.not_valid_after_utc:
+        if at > cert.not_valid_after:
             errors.append("certificate has expired")
         return errors
 

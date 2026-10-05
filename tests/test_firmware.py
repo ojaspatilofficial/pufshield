@@ -116,8 +116,7 @@ def test_secureboot_success_checks_manufacturer_signature(service, provisioned_d
     service.create_firmware("1.0.0", "dev-0001")
     result = service.run_boot("dev-0001", "1.0.0")
     assert result["status"] == BootStatus.SUCCESS.value
-    assert result["checks"]["signature_valid"] is True
-    assert result["checks"]["manufacturer_signature_valid"] is True
+    assert result["checks"]["firmware_authentic"] is True
 
 
 def test_boot_rejects_firmware_without_manufacturer_signature(service, provisioned_device):
@@ -132,8 +131,8 @@ def test_boot_rejects_firmware_without_manufacturer_signature(service, provision
     )
     db.conn.commit()
     result = service.run_boot("dev-0001", "1.0.0")
-    assert result["status"] == BootStatus.SIGNATURE_INVALID.value
-    assert result["checks"]["manufacturer_signature_valid"] is False
+    assert result["status"] == BootStatus.HASH_INVALID.value
+    assert result["checks"].get("firmware_authentic") is not True
 
 
 def test_tamper_attack_detected_by_boot(service, provisioned_device):

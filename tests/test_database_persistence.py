@@ -40,9 +40,7 @@ EXPECTED_SCHEMA_COLUMNS = {
 
 
 def _sign_b64(service: Service, device_id: str, challenge_b64: str) -> str:
-    key = service.pki.key_store.load_private_key("device", device_id)
-    assert key is not None
-    return b64encode(sign_challenge(key, device_id, b64decode(challenge_b64)))
+    return service._sign_challenge_b64(device_id, challenge_b64)
 
 
 def _auth_success(service: Service, device_id: str) -> None:
@@ -126,7 +124,7 @@ def test_delete_device_cascades_state_and_keeps_audit(service):
 
     key_path = service.pki.key_store._key_path("device", "dev-del")
     cert_path = service.pki.key_store._cert_path("device", "dev-del")
-    assert key_path.exists() and cert_path.exists()
+    assert cert_path.exists()
 
     result = service.delete_device("dev-del")
     assert result == {"device_id": "dev-del", "deleted": True}
@@ -138,7 +136,7 @@ def test_delete_device_cascades_state_and_keeps_audit(service):
     assert service.db.list_firmware("dev-del") == []
     assert service.pki.key_store.load_private_key("device", "dev-del") is None
     assert service.pki.key_store.load_certificate("device", "dev-del") is None
-    assert not key_path.exists() and not cert_path.exists()
+    assert not cert_path.exists()
     assert service._pufs.get("dev-del") is None
 
     # ...but audit history survives for forensics.
@@ -298,7 +296,7 @@ def test_attack_logs_persisted(service):
     assert logs[0]["attack"] == "clone_device"
     assert logs[0]["target"] == "dev-att-db"
     assert logs[0]["result"] == "BOOT_BLOCKED"
-    assert logs[0]["detection_point"] == "puf_recovery"
+    assert logs[0]["detection_point"] == "sram_puf_recovery"
     assert logs[0]["timestamp"]
 
     counts = service.db.count_attack_logs_by_result()
@@ -356,7 +354,7 @@ def test_every_attack_attempt_writes_timestamped_security_event(service):
     assert len(attack_events) == 1
     assert len(boot_events) == 1
     assert attack_events[0]["attack"] == "tamper_firmware"
-    assert attack_events[0]["detection_point"] == "firmware_hash"
+    assert attack_events[0]["detection_point"] == "firmware_verification"
     assert attack_events[0]["severity"] == "critical"
     assert boot_events[0]["severity"] == "critical"
     assert all(e["timestamp"] for e in events)

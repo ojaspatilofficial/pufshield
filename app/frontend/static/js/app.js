@@ -357,8 +357,10 @@ async function runLiveBoot() {
     prevStage = node.stage;
   }
 
+  const modeBadge = data.mode === "REAL_HARDWARE" ? "badge-ok" : "badge-neutral";
   $("#pipe-message").innerHTML = `
     <span class="badge ${allowed ? "badge-ok" : "badge-err"}">${allowed ? "BOOT ALLOWED" : "BOOT BLOCKED"}</span>
+    <span class="badge ${modeBadge}">${esc(data.mode || "SIMULATION")}</span>
     <span>${esc(data.message)}</span>`;
   setBusy(btn, false);
 
@@ -850,9 +852,11 @@ function stageDetail(stage) {
 
 function renderBootResult(box, data) {
   const blocked = data.decision === "BOOT_BLOCKED";
+  const modeBadge = data.mode === "REAL_HARDWARE" ? "badge-ok" : "badge-neutral";
   box.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
       <span class="badge ${blocked ? "badge-err" : "badge-ok"}">${esc(data.decision)}</span>
+      <span class="badge ${modeBadge}">${esc(data.mode || "SIMULATION")}</span>
       <span class="badge badge-neutral">${esc(data.status)}</span>
       <span class="badge badge-accent">${esc(data.booted ? "booted" : "halted")}</span>
     </div>
@@ -879,6 +883,7 @@ async function refreshBoot() {
   tbody.innerHTML = logs.map((l) => `
     <tr>
       <td>${bootStatusBadge(l.status)}</td>
+      <td><span class="badge ${l.mode === 'REAL_HARDWARE' ? 'badge-ok' : 'badge-neutral'}">${esc(l.mode || 'SIMULATION')}</span></td>
       <td class="mono">${esc(l.device_id)}</td>
       <td class="mono">${esc(l.image_version || "—")}</td>
       <td>${esc(l.message)}</td>

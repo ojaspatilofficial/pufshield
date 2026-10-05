@@ -121,16 +121,37 @@ class Service:
         if self.db.get_device(device_id):
             raise DeviceAlreadyExists(f"device {device_id!r} already provisioned")
 
-        cert = self.pki.issue_device_certificate(device_id)
         seed = random_bytes(self.settings.device_key_size_bytes)
         puf = SRAMPUF(device_id, bit_size=bit_size, seed=seed)
-        enrollment = PUFEnrollment.enroll(
-            puf,
-            num_captures=num_captures,
-            device_public_key=serialize_public_key(cert.public_key()),
-        )
+        
+        # First enroll without public key to get the fuzzy helper
+        enrollment = PUFEnrollment.enroll(puf, num_captures=num_captures)
         self.db.upsert_device(device_id, bit_size, seed)
         self.db.upsert_enrollment(enrollment)
+        
+        # Reconstruct the PUF secret on device to derive the private key
+        from .device.simulator import SimulatorHardware
+        hw = SimulatorHardware(device_id, self.db)
+        helper_data = {
+            "fuzzy_helper": enrollment.fuzzy_helper.to_dict() if enrollment.fuzzy_helper else {},
+            "stability_mask": enrollment.stability_mask.hex()
+        }
+        puf_secret = hw.reconstruct_puf_secret(helper_data)
+        device_key_bytes = hw.derive_device_secret(puf_secret, "device-auth")
+        
+        from cryptography.hazmat.primitives.asymmetric import ec
+        priv = ec.derive_private_key(int.from_bytes(device_key_bytes, "big"), ec.SECP256R1())
+        pub = priv.public_key()
+        
+        # Issue the certificate containing the PUF-derived public key
+        cert = self.pki.issue_device_certificate(device_id, public_key=pub)
+        
+        # Update the enrollment with the puf_binding
+        from .fuzzy.kdf import derive_puf_binding
+        from .crypto.utils import serialize_public_key
+        enrollment.puf_binding = derive_puf_binding(puf_secret, serialize_public_key(pub), device_id)
+        self.db.upsert_enrollment(enrollment)
+        
         self.db.save_certificate(device_id, cert)
         self.db.recompute_uniqueness()
         self._pufs[device_id] = puf
@@ -330,13 +351,25 @@ class Service:
         parse_version(version)
 
         payload = payload if payload is not None else DEFAULT_FIRMWARE_PAYLOAD
-        private_key = self.pki.key_store.load_private_key("device", device_id)
-        if private_key is None:
-            raise NoFirmwareError(f"no private key stored for device {device_id!r}")
+        
+        enrollment = self.db.get_enrollment(device_id)
+        if not enrollment:
+            raise NoFirmwareError(f"no enrollment for device {device_id!r}")
+            
+        from .device.simulator import SimulatorHardware
+        from cryptography.hazmat.primitives.asymmetric import ec
+        hw = SimulatorHardware(device_id, self.db)
+        helper_data = {
+            "fuzzy_helper": enrollment.fuzzy_helper.to_dict() if enrollment.fuzzy_helper else {},
+            "stability_mask": enrollment.stability_mask.hex()
+        }
+        puf_secret = hw.reconstruct_puf_secret(helper_data)
+        device_key = hw.derive_device_secret(puf_secret, "device-auth")
+        priv = ec.derive_private_key(int.from_bytes(device_key, "big"), ec.SECP256R1())
 
         manufacturer_key = ensure_manufacturer_key(self.pki.key_store)
         image = FirmwareImage(version=version, device_id=device_id, payload=payload)
-        return image.sign(private_key).sign_manifest(manufacturer_key)
+        return image.sign(priv).sign_manifest(manufacturer_key)
 
     def create_firmware(self, version: str, device_id: str, payload: bytes | None = None) -> dict:
         """Build, sign, and store a firmware image for a device."""
@@ -394,8 +427,8 @@ class Service:
             "subject": cert.subject.rfc4514_string(),
             "issuer": cert.issuer.rfc4514_string(),
             "serial_number": str(cert.serial_number),
-            "not_valid_before": cert.not_valid_before_utc.isoformat(),
-            "not_valid_after": cert.not_valid_after_utc.isoformat(),
+            "not_valid_before": cert.not_valid_before.isoformat(),
+            "not_valid_after": cert.not_valid_after.isoformat(),
             "is_ca": bool(is_ca_certificate(cert)),
             "key_usage": key_usage_names,
             "public_key": {
@@ -519,10 +552,24 @@ class Service:
 
     def _sign_challenge_b64(self, device_id: str, challenge_b64: str) -> str:
         """Sign a challenge exactly as the genuine device would."""
-        private_key = self.pki.key_store.load_private_key("device", device_id)
-        if private_key is None:
-            raise NoFirmwareError(f"no private key stored for device {device_id!r}")
-        return b64encode(sign_challenge(private_key, device_id, b64decode(challenge_b64)))
+        enrollment = self.db.get_enrollment(device_id)
+        if not enrollment:
+            raise NoFirmwareError(f"no enrollment for device {device_id!r}")
+            
+        from .device.simulator import SimulatorHardware
+        hw = SimulatorHardware(device_id, self.db)
+        helper_data = {
+            "fuzzy_helper": enrollment.fuzzy_helper.to_dict() if enrollment.fuzzy_helper else {},
+            "stability_mask": enrollment.stability_mask.hex()
+        }
+        puf_secret = hw.reconstruct_puf_secret(helper_data)
+        device_key = hw.derive_device_secret(puf_secret, "device-auth")
+        
+        from .auth.challenge import challenge_message
+        challenge = b64decode(challenge_b64)
+        msg = challenge_message(device_id, challenge)
+        sig = hw.sign_attestation(device_key, msg)
+        return b64encode(sig)
 
     def run_boot(
         self,

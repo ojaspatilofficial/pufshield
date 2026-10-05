@@ -66,7 +66,7 @@ def test_boot_report_happy_path(client):
     assert "passed" in first_event
     assert "duration_ms" in first_event
     assert "title" in first_event
-    assert "description" in first_event
+    assert "details" in first_event
 
     assert "summary" in body
     assert isinstance(body["summary"], dict)
