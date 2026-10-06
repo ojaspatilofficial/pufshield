@@ -93,7 +93,7 @@ def test_valid_latest_firmware_boots(service, provisioned_device):
     result = service.run_boot("dev-0001", "1.0.0")
     assert result["status"] == BootStatus.SUCCESS.value
     assert result["checks"]["allowed"] is True
-    assert result["checks"]["version"] == "1.0.0"
+    assert result["checks"]["security_version"] == 10000
 
 
 def test_valid_upgrade_boots_after_raising_minimum(service, provisioned_device):

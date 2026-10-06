@@ -104,7 +104,7 @@ def test_attack_endpoint(client):
     assert res.status_code == 200
     body = res.json()
     assert body["expected_failure"] is True
-    assert body["status"] == "hash_invalid"
+    assert body["status"] == "signature_invalid"
 
 
 def test_clone_attack_fails_puf(client):

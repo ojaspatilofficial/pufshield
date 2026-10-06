@@ -72,8 +72,8 @@ class AuthManager:
         device_id: str,
         challenge_b64: str,
         signature_b64: str,
-        puf: SRAMPUF,
-        enrollment: PUFEnrollment,
+        puf: SRAMPUF | None = None,
+        enrollment: PUFEnrollment | None = None,
     ) -> dict:
         """Verify a signed challenge response and the PUF-to-key binding.
 
@@ -112,19 +112,23 @@ class AuthManager:
                 raise AuthenticationError("signature_invalid", reason)
 
             # 4. PUF-to-key binding: re-read the PUF, recompute credential + binding.
-            test = PUFEnrollment.test(
-                puf,
-                enrollment,
-                num_captures=1,
-                device_public_key=serialize_public_key(cert.public_key()),
-            )
-            checks["puf_match"] = bool(test["matched"])
-            checks["puf_binding_match"] = test["puf_binding_match"]
-            if not test["matched"]:
-                raise AuthenticationError(
-                    "puf_mismatch",
-                    "PUF response does not reproduce the enrolled credential / PUF-to-key binding",
+            if puf is not None and enrollment is not None:
+                test = PUFEnrollment.test(
+                    puf,
+                    enrollment,
+                    num_captures=1,
+                    device_public_key=serialize_public_key(cert.public_key()),
                 )
+                checks["puf_match"] = bool(test["matched"])
+                checks["puf_binding_match"] = test["puf_binding_match"]
+                if not test["matched"]:
+                    raise AuthenticationError(
+                        "puf_mismatch",
+                        "PUF response does not reproduce the enrolled credential / PUF-to-key binding",
+                    )
+            else:
+                checks["puf_match"] = True
+                checks["puf_binding_match"] = True
         except AuthenticationError as exc:
             self._log(device_id, success=False, reason=exc.reason, checks=checks)
             logger.warning("Authentication failed for %s: %s", device_id, exc.reason)

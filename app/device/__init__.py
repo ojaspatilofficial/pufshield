@@ -1,12 +1,12 @@
 from .interfaces import DeviceHardware, BootloaderInterface
 from .simulator import SimulatorHardware
-from .hardware import RealHardware
+from .hardware import RealPC_TPMHardware
 from .bootloader import ReferenceBootloader
 
 __all__ = [
     "DeviceHardware",
     "BootloaderInterface",
     "SimulatorHardware",
-    "RealHardware",
+    "RealPC_TPMHardware",
     "ReferenceBootloader"
 ]

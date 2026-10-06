@@ -55,7 +55,6 @@ def test_verify_firmware_valid(service, provisioned_device):
     service.create_firmware("1.0.0", "dev-0001")
     result = service.verify_firmware("dev-0001", "1.0.0")
     assert result["hash_valid"] is True
-    assert result["device_signature_valid"] is True
     assert result["manufacturer_signature_valid"] is True
     assert result["verified"] is True
 
@@ -131,14 +130,14 @@ def test_boot_rejects_firmware_without_manufacturer_signature(service, provision
     )
     db.conn.commit()
     result = service.run_boot("dev-0001", "1.0.0")
-    assert result["status"] == BootStatus.HASH_INVALID.value
+    assert result["status"] == BootStatus.SIGNATURE_INVALID.value
     assert result["checks"].get("firmware_authentic") is not True
 
 
 def test_tamper_attack_detected_by_boot(service, provisioned_device):
     service.create_firmware("1.0.0", "dev-0001")
     result = service.run_attack("tamper_firmware", "dev-0001")
-    assert result["status"] == BootStatus.HASH_INVALID.value
+    assert result["status"] == BootStatus.SIGNATURE_INVALID.value
     assert result["expected_failure"] is True
     assert result["decision"] == "BOOT_BLOCKED"
 

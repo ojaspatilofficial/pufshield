@@ -276,7 +276,6 @@ def test_firmware_verify_clean_image(client):
     body = res.json()
     assert body["verified"] is True
     assert body["hash_valid"] is True
-    assert body["device_signature_valid"] is True
     assert body["manufacturer_signature_valid"] is True
     assert body["version_allowed"] is True
 

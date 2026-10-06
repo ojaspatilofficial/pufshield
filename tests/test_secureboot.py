@@ -10,24 +10,24 @@ from app.secureboot import BootStatus
 def test_firmware_roundtrip():
     private_key = ec.generate_private_key(ec.SECP256R1())
     image = FirmwareImage(version="1.0.0", device_id="dev-1", payload=b"bootloader")
-    signed = image.sign(private_key)
+    signed = image.sign_manifest(private_key)
     bundle = signed.to_bundle()
     restored = FirmwareImage.from_bundle(bundle)
-    assert restored.verify(private_key.public_key())
+    assert restored.verify_manifest(private_key.public_key())
     assert restored.payload == b"bootloader"
     assert restored.version == "1.0.0"
 
 
 def test_firmware_tamper_detected():
     private_key = ec.generate_private_key(ec.SECP256R1())
-    signed = FirmwareImage(version="1.0.0", device_id="dev-1", payload=b"bootloader").sign(private_key)
-    tampered = FirmwareImage(version="1.0.0", device_id="dev-1", payload=b"BOOTLOADER!", signature=signed.signature)
-    assert not tampered.verify(private_key.public_key())
+    signed = FirmwareImage(version="1.0.0", device_id="dev-1", payload=b"bootloader").sign_manifest(private_key)
+    tampered = FirmwareImage(version="1.0.0", device_id="dev-1", payload=b"BOOTLOADER!", manufacturer_signature=signed.manufacturer_signature)
+    assert not tampered.verify_manifest(private_key.public_key())
 
 
 def test_bundle_digest_guard():
     private_key = ec.generate_private_key(ec.SECP256R1())
-    signed = FirmwareImage(version="1.0.0", device_id="dev-1", payload=b"bootloader").sign(private_key)
+    signed = FirmwareImage(version="1.0.0", device_id="dev-1", payload=b"bootloader").sign_manifest(private_key)
     bundle = signed.to_bundle()
     bundle["payload_b64"] = __import__("app.crypto.utils", fromlist=["b64encode"]).b64encode(b"evil")
     try:
@@ -58,7 +58,7 @@ def test_secureboot_fails_for_clone(service, provisioned_device):
 def test_secureboot_fails_for_tampered_firmware(service, provisioned_device):
     service.create_firmware("1.0.0", "dev-0001")
     result = service.run_attack("tamper_firmware", "dev-0001")
-    assert result["status"] == BootStatus.HASH_INVALID.value
+    assert result["status"] == BootStatus.SIGNATURE_INVALID.value
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["expected_failure"] is True
     assert result["stages"]["firmware_verification"]["passed"] is False

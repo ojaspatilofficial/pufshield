@@ -21,7 +21,7 @@ from ..firmware import FirmwareImage, VersionError, load_manufacturer_public_key
 from ..pki import PKIManager
 from ..puf import PUFEnrollment, SRAMPUF
 from ..device.bootloader import ReferenceBootloader
-from ..device.simulator import SimulatorHardware
+from ..device.hardware import RealPC_TPMHardware
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,7 @@ class BootStatus(str, enum.Enum):
     KEY_DERIVATION_FAILED = "key_derivation_failed"
     KERNEL_INVALID = "kernel_invalid"
     ROOTFS_INVALID = "rootfs_invalid"
+    HARDWARE_NOT_AVAILABLE = "hardware_not_available"
     BLOCKED = "blocked"
 
 class BootResult:
@@ -72,7 +73,7 @@ class BootResult:
         total_duration_ms: float = 0.0,
         stage_order: tuple[str, ...] = (),
         decision_type: str = "DEVICE_BOOT_RESULT",
-        mode: str = "SIMULATION",
+        mode: str = "REAL_HARDWARE",
     ) -> None:
         self.status = status
         self.message = message
@@ -170,7 +171,7 @@ class BootResult:
 
 
 class SecureBootManager:
-    """Orchestrates the secure boot simulation and validation."""
+    """Orchestrates the secure boot verification."""
 
     def __init__(self, pki: PKIManager | None = None, db: Database | None = None) -> None:
         self.pki = pki or PKIManager()
@@ -187,13 +188,22 @@ class SecureBootManager:
         expected_sha256: str | None = None,
         challenge_b64: str | None = None,
         signature_b64: str | None = None,
+        hardware=None,
     ) -> BootResult:
         
         boot_start = time.perf_counter()
         
         # We simulate the hardware executing the bootloader
-        hw = SimulatorHardware(device_id, self.db)
-        if puf is not None:
+        hw = hardware
+        if hw is None:
+            import os
+            if os.environ.get("PUFSHIELD_SIMULATE_HARDWARE") == "1":
+                from ..device.simulator import SimulatorHardware
+                hw = SimulatorHardware(device_id, self.db)
+            else:
+                hw = RealPC_TPMHardware(device_id)
+        
+        if puf is not None and hasattr(hw, "puf"):
             hw.puf = puf
             
         helper_data = {

@@ -110,7 +110,9 @@ class AuthenticateRequest(BaseModel):
 
 class AttestVerifyRequest(BaseModel):
     challenge_b64: str = Field(min_length=1, description="Base64 one-time challenge nonce")
-    signature_b64: str = Field(min_length=1, description="Base64 ECDSA signature over the challenge")
+    signature_b64: str = Field(min_length=1, description="Base64 ECDSA signature over the attestation payload")
+    measurements_b64: str = Field(default="", description="Base64 TPM PCRs or boot measurements")
+    security_counter: int = Field(default=1, description="Monotonic rollback counter")
 
 
 @router.get("/health")
@@ -301,7 +303,13 @@ def attest_challenge(device_id: str, service: Service = Depends(get_service)) ->
 @router.post("/devices/{device_id}/attest/verify")
 def attest_verify(device_id: str, req: AttestVerifyRequest, service: Service = Depends(get_service)) -> dict:
     try:
-        return service.authenticate_device(device_id, req.challenge_b64, req.signature_b64)
+        return service.verify_attestation(
+            device_id, 
+            req.challenge_b64, 
+            req.signature_b64, 
+            req.measurements_b64, 
+            req.security_counter
+        )
     except (DeviceNotFound, NoEnrollmentError) as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except AuthenticationError as exc:

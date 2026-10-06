@@ -125,7 +125,6 @@ class AttackSimulator:
             version=image.version,
             device_id=image.device_id,
             payload=replacement if replacement is not None else b"TAMPERED-PAYLOAD" + random_bytes(16),
-            signature=image.signature,
             manufacturer_signature=image.manufacturer_signature,
         )
         logger.info("Simulating firmware tampering on image %s", image.version)
@@ -133,7 +132,7 @@ class AttackSimulator:
 
     def wrong_signer(self, image: FirmwareImage, unauthorized_key, ) -> FirmwareImage:
         """Re-sign the image with a key that is not in the trust chain."""
-        signed = image.sign(unauthorized_key)
+        signed = image.sign_manifest(unauthorized_key)
         logger.info("Simulating image signed by unauthorized key")
         return signed
 

@@ -118,7 +118,7 @@ def test_firmware_hash_failure_blocks_boot(service, provisioned_device):
     service.create_firmware("1.0.0", "dev-0001")
     result = service.run_attack("tamper_firmware", "dev-0001")
     assert result["decision"] == "BOOT_BLOCKED"
-    assert result["status"] == BootStatus.HASH_INVALID.value
+    assert result["status"] == BootStatus.SIGNATURE_INVALID.value
     assert result["stages"]["firmware_verification"]["passed"] is False
 
 def test_firmware_signature_failure_blocks_boot(service, provisioned_device):

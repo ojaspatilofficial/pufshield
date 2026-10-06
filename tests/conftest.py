@@ -11,6 +11,7 @@ _TMP_ROOT = tempfile.mkdtemp(prefix="pufshield-tests-")
 os.environ["DATABASE_PATH"] = os.path.join(_TMP_ROOT, "pufshield.db")
 os.environ["PUF_CREDENTIAL_SECRET_PATH"] = os.path.join(_TMP_ROOT, "puf_secret.bin")
 os.environ["APP_DEBUG"] = "false"
+os.environ["PUFSHIELD_SIMULATE_HARDWARE"] = "1"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

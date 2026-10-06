@@ -65,10 +65,10 @@ def test_tampered_firmware_is_blocked(service, provisioned_device):
     # the payload really changed: recomputed digest differs from the registered one
     hash_stage = _details(result, "firmware_verification")
     assert "error" in hash_stage
-    assert "hash mismatch" in hash_stage["error"].lower()
+    assert "manufacturer signature invalid" in hash_stage["error"].lower()
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["booted"] is False
-    assert result["status"] == BootStatus.HASH_INVALID.value
+    assert result["status"] == BootStatus.SIGNATURE_INVALID.value
     assert result["detection_point"] == "firmware_verification"
     assert result["expected_failure"] is True
 
@@ -161,7 +161,7 @@ def test_signed_old_firmware_is_blocked(service, provisioned_device):
     # ... so blocking is purely the anti-rollback policy
     rollback_stage = _details(result, "anti_rollback")
     assert "error" in rollback_stage
-    assert "1.0.0" in rollback_stage["error"]
+    assert "10000" in rollback_stage["error"]
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["status"] == BootStatus.ROLLBACK_REJECTED.value
     assert result["detection_point"] == "anti_rollback"
@@ -219,7 +219,7 @@ def test_tampered_signature_bytes_are_blocked(service, provisioned_device):
     challenge_b64, signature_b64 = service._device_challenge_response("dev-0001")
 
     # corrupt the device signature on an otherwise genuine image
-    image.signature = bytes([b ^ 0xFF for b in image.signature[:8]]) + image.signature[8:]
+    image.manufacturer_signature = bytes([b ^ 0xFF for b in image.manufacturer_signature[:8]]) + image.manufacturer_signature[8:]
 
     result = service.boot.verify_boot(
         device_id="dev-0001",
@@ -234,7 +234,7 @@ def test_tampered_signature_bytes_are_blocked(service, provisioned_device):
 
     # the untouched payload still passes the hash stage, isolating the signature stage
     assert "error" in _details(result, "firmware_verification")
-    assert "Device signature invalid" in _details(result, "firmware_verification")["error"]
+    assert "manufacturer signature invalid" in _details(result, "firmware_verification")["error"].lower()
     assert result["decision"] == "BOOT_BLOCKED"
     assert result["status"] == BootStatus.SIGNATURE_INVALID.value
     assert _first_failed_stage(result) == "firmware_verification"

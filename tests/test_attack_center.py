@@ -33,7 +33,7 @@ EXPECTED_DETECTION = {
 
 EXPECTED_STATUS = {
     "clone_device": BootStatus.PUF_MISMATCH.value,
-    "tamper_firmware": BootStatus.HASH_INVALID.value,
+    "tamper_firmware": BootStatus.SIGNATURE_INVALID.value,
     "replay_challenge": BootStatus.AUTH_FAILED.value,
     "certificate_forgery": BootStatus.CERTIFICATE_INVALID.value,
     "firmware_rollback": BootStatus.ROLLBACK_REJECTED.value,
@@ -69,7 +69,7 @@ def test_tamper_firmware_changes_payload_and_is_detected(service, provisioned_de
     hash_stage = _details(result, "firmware_verification")
     assert "error" in hash_stage or hash_stage.get("hash_valid") is False
     assert result["decision"] == "BOOT_BLOCKED"
-    assert result["status"] == BootStatus.HASH_INVALID.value
+    assert result["status"] == BootStatus.SIGNATURE_INVALID.value
     assert result["detection_point"] == "firmware_verification"
 
 

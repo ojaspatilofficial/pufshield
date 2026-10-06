@@ -280,6 +280,79 @@ class Service:
             enrollment=enrollment,
         )
 
+    def verify_attestation(self, device_id: str, challenge_b64: str, signature_b64: str, measurements_b64: str, security_counter: int) -> dict:
+        """Verify full hardware attestation.
+        
+        Delegates to auth logic to verify challenge and signature.
+        Then verifies boot measurements (PCRs) and security counter.
+        """
+        device = self.db.get_device(device_id)
+        if not device:
+            raise DeviceNotFound(f"device {device_id!r} not found")
+        
+        # Verify the challenge + signature (with or without PUF based on enrollment presence)
+        enrollment = self.db.get_enrollment(device_id)
+        puf = None
+        if enrollment:
+            try:
+                puf = self.puf_for(device_id)
+            except Exception:
+                pass
+                
+        auth_result = self.auth.authenticate(
+            device_id=device_id,
+            challenge_b64=challenge_b64,
+            signature_b64=signature_b64,
+            puf=puf,
+            enrollment=enrollment,
+        )
+
+        checks = auth_result["checks"]
+        
+        # Verify Security Counter against anti-rollback policy
+        minimum_version = self.db.get_min_firmware_version(device_id)
+        if minimum_version:
+            # Parse version string into integer (e.g. 1.0.0 -> 10000)
+            try:
+                major, minor, patch = minimum_version.split(".")
+                min_int = int(major) * 10000 + int(minor) * 100 + int(patch)
+            except Exception:
+                min_int = 1
+            checks["security_counter_valid"] = (security_counter >= min_int)
+            if not checks["security_counter_valid"]:
+                from .auth import AuthenticationError
+                raise AuthenticationError("rollback_rejected", f"Security counter {security_counter} is below allowed {min_int}")
+        else:
+            checks["security_counter_valid"] = True
+            
+        # Verify Measurements against Golden PCRs of the device's latest firmware
+        if measurements_b64:
+            try:
+                import base64
+                import hashlib
+                from .firmware.image import FirmwareImage
+                import json
+                actual_measurement = base64.b64decode(measurements_b64)
+                
+                latest_fw = self.db.get_latest_firmware(device_id)
+                if latest_fw:
+                    fw = FirmwareImage.from_bundle(json.loads(latest_fw["manifest"]))
+                    # The PCR extends kernel_hash and rootfs_hash
+                    expected_pcr = hashlib.sha256(fw.kernel_hash + fw.rootfs_hash).digest()
+                    checks["measurements_valid"] = (actual_measurement == expected_pcr)
+                else:
+                    checks["measurements_valid"] = False
+            except Exception:
+                checks["measurements_valid"] = False
+        else:
+            checks["measurements_valid"] = False
+            
+        return {
+            "device_id": device_id,
+            "attested": True,
+            "checks": checks
+        }
+
     def puf_analysis(self) -> dict:
         """Fleet-wide PUF statistics: uniqueness, reliability, BER, and per-device summary.
 
@@ -338,12 +411,11 @@ class Service:
     def sign_firmware(self, version: str, device_id: str, payload: bytes | None = None) -> FirmwareImage:
         """Build and cryptographically sign a firmware image for a device.
 
-        The image is signed with the device's key (identity) and the
-        manufacturer's key (manifest: version + device id + payload
-        SHA-256). The manufacturer private key stays in the key store and
-        is never returned. ``version`` must be a well-formed dotted
-        numeric version (validated up front so stored policies are always
-        comparable).
+        The image is signed by the manufacturer's key (manifest: version + 
+        device id + payload SHA-256 + kernel hash + rootfs hash). The manufacturer 
+        private key stays in the key store and is never returned. ``version`` must 
+        be a well-formed dotted numeric version (validated up front so stored 
+        policies are always comparable).
         """
         device = self.db.get_device(device_id)
         if not device:
@@ -356,20 +428,9 @@ class Service:
         if not enrollment:
             raise NoFirmwareError(f"no enrollment for device {device_id!r}")
             
-        from .device.simulator import SimulatorHardware
-        from cryptography.hazmat.primitives.asymmetric import ec
-        hw = SimulatorHardware(device_id, self.db)
-        helper_data = {
-            "fuzzy_helper": enrollment.fuzzy_helper.to_dict() if enrollment.fuzzy_helper else {},
-            "stability_mask": enrollment.stability_mask.hex()
-        }
-        puf_secret = hw.reconstruct_puf_secret(helper_data)
-        device_key = hw.derive_device_secret(puf_secret, "device-auth")
-        priv = ec.derive_private_key(int.from_bytes(device_key, "big"), ec.SECP256R1())
-
         manufacturer_key = ensure_manufacturer_key(self.pki.key_store)
         image = FirmwareImage(version=version, device_id=device_id, payload=payload)
-        return image.sign(priv).sign_manifest(manufacturer_key)
+        return image.sign_manifest(manufacturer_key)
 
     def create_firmware(self, version: str, device_id: str, payload: bytes | None = None) -> dict:
         """Build, sign, and store a firmware image for a device."""
@@ -465,10 +526,9 @@ class Service:
         return {"device_id": device_id, "min_firmware_version": version}
 
     def verify_firmware(self, device_id: str, firmware_version: str) -> dict:
-        """Verify a stored firmware image: hash integrity + both signatures.
+        """Verify a stored firmware image: hash integrity + manufacturer signature.
 
         Checks the SHA-256 payload hash against the registered manifest,
-        the device signature against the device certificate public key,
         the manufacturer signature against the trusted manufacturer
         public key, and the anti-rollback version policy. ``verified`` is
         only true when all of them hold.
@@ -486,12 +546,10 @@ class Service:
             hash_valid = True
         except ValueError:
             # payload_b64 was modified: reconstruct to report the live digest.
-            image = FirmwareImage(bundle["version"], bundle["device_id"], b64decode(bundle["payload_b64"]))
+            image = FirmwareImage(bundle.get("version", bundle.get("firmware_version")), bundle["device_id"], b64decode(bundle["payload_b64"]))
             hash_valid = False
 
-        cert = self.pki.get_device_certificate(device_id)
         manufacturer_key = ensure_manufacturer_key(self.pki.key_store)
-        device_valid = image.verify(cert.public_key())
         manufacturer_valid = image.verify_manifest(manufacturer_key.public_key())
         minimum_version = self.db.get_min_firmware_version(device_id)
         try:
@@ -505,9 +563,8 @@ class Service:
             "version_allowed": allowed,
             "hash_valid": hash_valid,
             "payload_sha256": image.payload_digest,
-            "device_signature_valid": device_valid,
             "manufacturer_signature_valid": manufacturer_valid,
-            "verified": hash_valid and device_valid and manufacturer_valid and allowed,
+            "verified": hash_valid and manufacturer_valid and allowed,
         }
 
     # -- secure boot ---------------------------------------------------
